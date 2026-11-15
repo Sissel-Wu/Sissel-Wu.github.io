@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#e9e3d8" />
+    <meta name="description" content="Sissel 的数字工作室。坐一会儿，看看我的研究、影像、游戏与日常。" />
+    <title>Sissel — A place to be.</title>
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="room" aria-label="可交互的 3D 工作室。通过下方按钮探索视频、博客、个人简介和摄影。"></canvas>
+      <div class="vignette" aria-hidden="true"></div>
+      <header class="header">
+        <a class="brand" href="./" aria-label="Sissel 首页"><span class="brand-icon">s.</span><span>SISSEL<span class="brand-sub">A PERSONAL SPACE</span></span></a>
+        <nav class="header-nav" aria-label="主页导航"><span class="local-time"><i></i><span id="time">黄昏，正好</span></span><button id="index-button" class="text-button">探索目录 <span>↗</span></button><a href="https://github.com/Sissel-Wu" target="_blank" rel="noreferrer" class="github-link" aria-label="访问 Sissel 的 GitHub">GitHub ↗</a></nav>
+      </header>
+      <section class="intro" aria-label="欢迎"><div class="eyebrow"><span class="small-line"></span> WELCOME TO MY LITTLE CORNER</div><h1>生活有趣，<br>保持好奇<span>。</span></h1><p>我是 Sissel。研究、创造，也认真玩耍。<br>欢迎来我的数字工作室坐坐。</p></section>
+      <div class="room-label"><span>01 / THE STUDIO</span><span>在这里，灵感与日常相遇。</span></div>
+      <div id="hotspots" aria-label="房间里的物品"></div>
+      <div id="loading" role="status"><span class="loading-dot"></span> 正在为你打开工作室…</div>
+      <div id="fallback" hidden><h2>换一种方式，逛逛我的工作室。</h2><p>当前设备无法呈现 3D 场景，所有内容仍可通过下方目录浏览。</p></div>
+      <footer class="footer">
+        <div class="view-caption"><span id="view-number">01</span><div><strong id="view-title">客厅</strong><small id="view-subtitle">THE LIVING ROOM</small></div></div>
+        <div class="navigation"><div class="view-switch" role="group" aria-label="切换视角"><button data-view="living" class="active" aria-pressed="true"><span>◧</span> 客厅</button><button data-view="desk" aria-pressed="false"><span>▱</span> 书桌</button></div><span class="move-hint"><span>↔</span> 移动鼠标环顾 · 点击物品探索</span></div>
+        <button class="quiet-button" id="motion-button" aria-pressed="false" title="暂停鼠标跟随">↔ <span>视角跟随中</span></button>
+      </footer>
+      <aside class="quick-access" aria-label="直接访问内容"><button data-open="videos">01 <span>影像</span></button><button data-open="gaming">02 <span>玩乐</span></button><button data-open="work">03 <span>关于我</span></button><button data-open="photos">04 <span>摄影</span></button></aside>
+      <dialog id="content-dialog" aria-labelledby="panel-title"><div class="panel-top"><span id="panel-kicker"></span><button id="close-dialog" class="close-button" aria-label="关闭面板">✕</button></div><div id="panel-content"></div><div class="panel-footer"><span>THIS IS A LITTLE PIECE OF MY WORLD.</span><span>SISSEL © <span id="year"></span></span></div></dialog>
+      <div id="toast" role="status"></div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
