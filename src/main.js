@@ -8,6 +8,23 @@ const kicker=document.querySelector('#panel-kicker');
 let room, lastFocus, currentPanel, reelCleanup=()=>{}, photoIndex=0;
 const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let following=!reducedMotion;
+const petCard=document.querySelector('#pet-card');
+let petTrigger;
+function playWithDog(action){
+  room?.pauseLook();room?.playDog(action);
+  const messages={pet:'团子开心地眯起眼，尾巴摇个不停。♡',paw:'小爪子给你！今天也要好好相处。',spin:'看我的！团子兴奋地转了一圈。'};
+  document.querySelector('#pet-status').textContent=room?messages[action]:'团子在窝里打了个哈欠，向你问好。♡';
+}
+function openDog(){
+  petTrigger=dialog.open?lastFocus:document.activeElement;
+  const fromDirectory=dialog.open;
+  if(fromDirectory)dialog.close();
+  petCard.hidden=false;playWithDog('pet');
+  document.querySelector('[data-pet-action="pet"]').focus({preventScroll:true});
+  if(fromDirectory)room?.setView('living');
+}
+function closeDog(){petCard.hidden=true;petTrigger?.focus({preventScroll:true});}
+document.querySelector('#close-pet').addEventListener('click',closeDog);
 const escapeHTML=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const heading=(eyebrow,title,description)=>`<div class="panel-heading"><div class="eyebrow">${eyebrow}</div><h2 id="panel-title">${title}</h2><p>${description}</p><span class="sample-label">MVP · 示例内容，等待真实故事入住</span></div>`;
 const postList=category=>posts.filter(p=>p.category===category).map(p=>`<button class="post" data-post="${p.id}"><div><span class="post-tag">${p.tag}</span><h3>${p.title}</h3><small>${p.date} &nbsp; / &nbsp; ${p.read} read</small></div><span>↗</span></button>`).join('');
@@ -20,13 +37,15 @@ function renderPanel(type){
   if(type==='culture')content.innerHTML=heading('READ. WATCH. LISTEN.','故事之外，还有回响。','读过的书、看过的电影、反复听的音乐，以及它们留下的念头。')+postList('culture');
   if(type==='work')content.innerHTML=`<div class="panel-heading"><div class="profile-hero"><div class="avatar" aria-hidden="true">s.</div><div><h2 id="panel-title">${profile.name}</h2><p>${profile.role}</p></div></div><span class="sample-label">以下简介、论文与文章均为演示占位</span></div><p class="bio">${profile.bio}</p><div class="tags">${profile.interests.map(t=>`<span>${t}</span>`).join('')}</div><a class="contact-link" href="https://github.com/Sissel-Wu" target="_blank" rel="noreferrer">Find me on GitHub ↗</a><div class="section-title"><h3>Selected publications</h3><span>RESEARCH / 01</span></div>${publications.map(p=>`<details class="publication"><summary><h4>${p.title}</h4><small>${p.authors}<br>${p.venue}</small></summary><p>${p.abstract}</p></details>`).join('')}<div class="section-title"><h3>思考与记录</h3><span>WRITING / 02</span></div>${postList('work')}`;
   if(type==='photos')content.innerHTML=heading('THROUGH THE VIEWFINDER','把瞬间，留在这里。','路过的风景、偶然的光线，和生活里的小小停顿。')+`<div class="photo-grid">${photos.map((p,i)=>`<button class="photo-card" data-photo="${i}" aria-label="查看照片：${p.title}"><img src="${p.src}" alt="${p.title}" loading="lazy"><h3>${p.title}</h3><small>${p.location} &nbsp; / &nbsp; ${p.year}</small></button>`).join('')}</div><p class="bio">照片为 Unsplash 演示素材，不代表作者本人作品。</p>`;
-  if(type==='index')content.innerHTML=heading('FIVE OBJECTS. MANY STORIES.','随意看看。','这个房间里的每一件物品，都是一扇小小的门。')+`<div class="directory">${[['videos','01 / TELEVISION','看点影像','视频、旅行与视觉日记'],['gaming','02 / GAME CONSOLE','玩乐时间','游戏体验与生活碎片'],['work','03 / COMPUTER','认识一下','个人简介、论文与研究笔记'],['photos','04 / CAMERA','光影收藏','照片、风景与城市漫步'],['culture','05 / BOOKCASE','书影音','阅读笔记、电影与音乐随笔']].map(([id,num,title,desc])=>`<button data-open="${id}"><small>${num}</small><h3>${title} ↗</h3><p>${desc}</p></button>`).join('')}</div>`;
+  if(type==='index')content.innerHTML=heading('A ROOM FULL OF STORIES.','随意看看。','这个房间里的每一件物品，都是一扇小小的门。')+`<div class="directory">${[['videos','01 / TELEVISION','看点影像','视频、旅行与视觉日记'],['gaming','02 / GAME CONSOLE','玩乐时间','游戏体验与生活碎片'],['work','03 / COMPUTER','认识一下','个人简介、论文与研究笔记'],['photos','04 / CAMERA','光影收藏','照片、风景与城市漫步'],['culture','05 / BOOKCASE','书影音','阅读笔记、电影与音乐随笔'],['dog','06 / LITTLE ROOMMATE','和团子玩','摸摸头、握个爪，认识博美小室友']].map(([id,num,title,desc])=>`<button data-open="${id}"><small>${num}</small><h3>${title} ↗</h3><p>${desc}</p></button>`).join('')}</div>`;
 }
 function openPanel(type){
+  if(type==='dog'){openDog();return;}
+  petCard.hidden=true;room?.pauseLook();
   if(!dialog.open){lastFocus=document.activeElement;renderPanel(type);dialog.showModal();document.querySelector('#close-dialog').focus();}else renderPanel(type);
 }
 function closePanel(){dialog.close();}
-dialog.addEventListener('close',()=>{reelCleanup();reelCleanup=()=>{};lastFocus?.focus({preventScroll:true});});
+dialog.addEventListener('close',()=>{reelCleanup();reelCleanup=()=>{};if(petCard.hidden)lastFocus?.focus({preventScroll:true});});
 dialog.addEventListener('click',e=>{if(e.target===dialog){const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)closePanel();}});
 document.querySelector('#close-dialog').addEventListener('click',closePanel);
 document.querySelector('#index-button').addEventListener('click',()=>openPanel('index'));
@@ -52,6 +71,7 @@ function showPhoto(index){
 document.addEventListener('click',e=>{
   const button=e.target.closest('button');if(!button)return;
   if(button.dataset.open)openPanel(button.dataset.open);
+  if(button.dataset.petAction)playWithDog(button.dataset.petAction);
   if(button.dataset.back)renderPanel(button.dataset.back);
   if(button.dataset.post)showArticle(button.dataset.post);
   if(button.dataset.video!==undefined)showVideo(Number(button.dataset.video));
@@ -60,6 +80,7 @@ document.addEventListener('click',e=>{
   if(button.dataset.view){room?.setView(button.dataset.view);updateView(button.dataset.view);}
 });
 document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&!petCard.hidden){closeDog();return;}
   if(dialog.open){if(currentPanel==='photos'&&content.querySelector('.photo-view')&&['ArrowLeft','ArrowRight'].includes(e.key)){e.preventDefault();showPhoto(photoIndex+(e.key==='ArrowRight'?1:-1));}return;}
   if(e.target instanceof HTMLButtonElement||e.target instanceof HTMLAnchorElement)return;
   if(e.key==='ArrowRight')room?.setView('desk');if(e.key==='ArrowLeft')room?.setView('living');

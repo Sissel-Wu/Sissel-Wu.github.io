@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { VIEWS, clampYaw, pointerYaw, smoothYaw } from './navigation.js';
+import { VIEWS, YAW_LIMITS, clampYaw, viewYaw, smoothYaw, fitRightYaw, createPointerLook } from './navigation.js';
+import { createDog } from './dog.js';
 
 export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -22,6 +23,9 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
   const raycaster = new THREE.Raycaster(), pointer = new THREE.Vector2();
   const clickables = [], anchors = new Map(), ownedTextures = [];
   const hotspotRoot = document.querySelector('#hotspots');
+  const surface = document.querySelector('#app');
+  const pointerLook = createPointerLook();
+  let yawLimits = [...YAW_LIMITS], lastShadowUpdate = 0;
   const materials = {};
   const mat = (name, color, roughness = .8, metalness = 0) => materials[name] ||= new THREE.MeshStandardMaterial({ color, roughness, metalness });
   const plaster = mat('plaster', '#ddd7c5'), sideWall = mat('sideWall', '#d7d3bd');
@@ -61,7 +65,7 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
     group.traverse(mesh=>{if(mesh.isMesh){mesh.userData.content=id;clickables.push(mesh);}});
     const button=document.createElement('button');button.className='hotspot';button.dataset.open=id;
     button.innerHTML=`<span class="hotspot-dot">+</span><span>${label}</span><em>${english}</em>`;
-    button.setAttribute('aria-label',`打开${label}`);hotspotRoot.append(button);
+    button.setAttribute('aria-label',id==='dog'?'和博美犬团子互动':`打开${label}`);hotspotRoot.append(button);
     anchors.set(id,{position:new THREE.Vector3(...position),button});
   }
   function plant(x,y,z,size=1,parent=scene) {
@@ -177,6 +181,12 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
   const handle=new THREE.Mesh(new THREE.TorusGeometry(.05,.012,8,16),cream);handle.position.set(.6,.77,-.12);coffee.add(handle);
   cylinder(.16,.16,.02,.48,.68,-.12,linen,coffee);
 
+  // A little roommate in the open living area, with a linen mat and a toy ball.
+  const dog = createDog({ reducedMotion });scene.add(dog.root);
+  const dogMat = cylinder(.67,.67,.025,.15,.015,.55,linen);dogMat.scale.z=.86;
+  sphere(.11,.78,.115,.82,clay);
+  interact(dog.root,'dog',[.15,1.65,.55],'团子 · 摸摸头','HELLO');
+
   // Gallery print, tall plant, standing reading lamp.
   const poster=texture((ctx,w,h)=>{ctx.fillStyle='#e8dfca';ctx.fillRect(0,0,w,h);ctx.fillStyle='#ab6546';ctx.beginPath();ctx.arc(w*.5,h*.35,w*.26,Math.PI,0);ctx.lineTo(w*.76,h*.8);ctx.lineTo(w*.24,h*.8);ctx.fill();ctx.fillStyle='#c5b995';ctx.beginPath();ctx.arc(w*.6,h*.54,w*.18,0,Math.PI*2);ctx.fill();ctx.fillStyle='#4e6249';ctx.beginPath();ctx.ellipse(w*.3,h*.65,w*.16,h*.28,-.5,0,Math.PI*2);ctx.fill();ctx.fillStyle='#6d725d';ctx.font='17px Georgia';ctx.fillText('THE ART OF SLOW LIVING',w*.17,h*.93);},512,680);
   picture(poster,1.02,1.34,-4.65,2.8,-4.34);
@@ -264,40 +274,110 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
   cylinder(.008,.008,1.25,-.2,5.3,-.7,dark);sphere(.48,-.2,4.48,-.7,cream,scene,[1,.8,1]);
   for(let i=0;i<9;i++){const angle=(i+1)/10*Math.PI;const torus=new THREE.Mesh(new THREE.TorusGeometry(Math.sin(angle)*.48,.004,6,64),linen);torus.rotation.x=Math.PI/2;torus.position.set(-.2,4.48+Math.cos(angle)*.38,-.7);scene.add(torus);}
 
-  function resize(){renderNeeded=true;const w=canvas.clientWidth,h=canvas.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.fov=w<760?59:49;camera.updateProjectionMatrix();}
-  function setView(next){view=next;targetYaw=VIEWS[next];onViewChange(next);}
-  function ray(event){const rect=canvas.getBoundingClientRect();pointer.set((event.clientX-rect.left)/rect.width*2-1,-(event.clientY-rect.top)/rect.height*2+1);raycaster.setFromCamera(pointer,camera);return raycaster.intersectObjects(clickables,false)[0];}
+  scene.updateMatrixWorld(true);
+  const cabinetBounds=new THREE.Box3().setFromObject(bookcase);
+  const cabinetCorners=[];
+  for(const x of [cabinetBounds.min.x,cabinetBounds.max.x])
+    for(const y of [cabinetBounds.min.y,cabinetBounds.max.y])
+      for(const z of [cabinetBounds.min.z,cabinetBounds.max.z])cabinetCorners.push(new THREE.Vector3(x,y,z));
+  function aim(atYaw){
+    camera.lookAt(camera.position.x+Math.sin(atYaw)*10,1.56,camera.position.z-Math.cos(atYaw)*10);
+    camera.updateMatrixWorld();
+  }
+  function resize(){
+    renderNeeded=true;
+    const w=canvas.clientWidth,h=canvas.clientHeight;
+    renderer.setSize(w,h,false);camera.aspect=w/h;camera.fov=w<760?59:49;camera.updateProjectionMatrix();
+    yawLimits=[YAW_LIMITS[0],fitRightYaw(atYaw=>{
+      aim(atYaw);
+      return Math.max(...cabinetCorners.map(point=>point.clone().project(camera).x));
+    })];
+    yaw=clampYaw(yaw,yawLimits);targetYaw=viewYaw(view,yawLimits);aim(yaw);
+  }
+  function pauseLook(){targetYaw=yaw;}
+  function setView(next){view=next;targetYaw=viewYaw(next,yawLimits);onViewChange(next);}
+  function ray(event){
+    const rect=canvas.getBoundingClientRect();
+    pointer.set((event.clientX-rect.left)/rect.width*2-1,-(event.clientY-rect.top)/rect.height*2+1);
+    raycaster.setFromCamera(pointer,camera);
+    return raycaster.intersectObjects(clickables,false)[0];
+  }
+  function nearHotspot(event){
+    return [...anchors.values()].some(({button})=>{
+      if(button.hidden)return false;
+      const r=button.getBoundingClientRect(),padding=24;
+      return event.clientX>=r.left-padding&&event.clientX<=r.right+padding&&event.clientY>=r.top-padding&&event.clientY<=r.bottom+padding;
+    });
+  }
   function pointerMove(event){
     if(document.querySelector('dialog').open)return;
-    if(dragging){const delta=event.clientX-startX;moved ||= Math.abs(delta)>6;targetYaw=clampYaw(startYaw-delta/canvas.clientWidth*.95);return;}
-    if(event.pointerType==='mouse'&&follow)targetYaw=pointerYaw(view,event.clientX/canvas.clientWidth*2-1);
-    canvas.style.cursor=ray(event)?'pointer':'grab';
+    if(dragging){
+      const delta=event.clientX-startX;moved ||= Math.abs(delta)>6;
+      targetYaw=clampYaw(startYaw-delta/canvas.clientWidth*.95,yawLimits);return;
+    }
+    if(event.pointerType!=='mouse')return;
+    const control=event.target.closest?.('button,a,dialog,.pet-card');
+    const hit=event.target===canvas?ray(event):null;
+    const paused=!!control||nearHotspot(event)||!!hit;
+    const rect=canvas.getBoundingClientRect();
+    const next=pointerLook.move({x:event.clientX,y:event.clientY,normalizedX:(event.clientX-rect.left)/rect.width*2-1,view,yaw,paused,limits:yawLimits});
+    // Hotspot protection also stops an in-progress ease immediately.
+    if(paused)pauseLook();
+    else if(follow&&next!==null)targetYaw=next;
+    canvas.style.cursor=hit?'pointer':'grab';
   }
-  function down(event){if(event.button!==0)return;dragging=true;startX=event.clientX;startYaw=targetYaw;moved=false;canvas.setPointerCapture(event.pointerId);}
-  function up(event){if(!dragging)return;dragging=false;if(canvas.hasPointerCapture(event.pointerId))canvas.releasePointerCapture(event.pointerId);if(moved){const next=targetYaw>.2?'desk':'living';view=next;onViewChange(next);}}
+  function pointerOver(event){
+    if(event.target.closest?.('.hotspot,.pet-card'))pauseLook();
+  }
+  function focusIn(event){if(event.target.closest?.('.hotspot,.pet-card'))pauseLook();}
+  function down(event){
+    if(event.button!==0)return;
+    pauseLook();dragging=true;startX=event.clientX;startYaw=yaw;moved=false;canvas.setPointerCapture(event.pointerId);
+  }
+  function up(event){
+    if(!dragging)return;dragging=false;
+    if(canvas.hasPointerCapture(event.pointerId))canvas.releasePointerCapture(event.pointerId);
+    if(moved){view=targetYaw>(viewYaw('living',yawLimits)+yawLimits[1])/2?'desk':'living';onViewChange(view);}
+  }
   function clickCanvas(event){if(moved)return;const hit=ray(event);if(hit)onOpen(hit.object.userData.content);}
-  function cancel(){dragging=false;moved=true;}
-  function leave(){if(!dragging)targetYaw=VIEWS[view];}
+  function cancel(){dragging=false;moved=true;pauseLook();}
   function frame(now){
     if(disposed)return;const dt=Math.min((now-lastTime)/1000,.05);lastTime=now;
     const previousYaw=yaw;
-    yaw=reducedMotion?targetYaw:smoothYaw(yaw,targetYaw,dt);
-    if(Math.abs(yaw-previousYaw)>.000001||renderNeeded){
-    camera.lookAt(camera.position.x+Math.sin(yaw)*10,1.56,camera.position.z-Math.cos(yaw)*10);
-    camera.updateMatrixWorld();
-    for(const {position,button} of anchors.values()){
-      const p=position.clone().project(camera);const x=(p.x*.5+.5)*canvas.clientWidth,y=(-p.y*.5+.5)*canvas.clientHeight;
-      button.hidden=p.z>1||p.z<0||x<48||x>canvas.clientWidth-48||y<85||y>canvas.clientHeight-155;
-      button.style.left=`${x}px`;button.style.top=`${y}px`;
+    yaw=reducedMotion?targetYaw:smoothYaw(yaw,targetYaw,dt,yawLimits);
+    const dogChanged=dog.update(now);
+    if(dogChanged&&(!dog.active||now-lastShadowUpdate>80)){renderer.shadowMap.needsUpdate=true;lastShadowUpdate=now;}
+    if(Math.abs(yaw-previousYaw)>.000001||renderNeeded||dogChanged){
+      aim(yaw);
+      for(const {position,button} of anchors.values()){
+        const p=position.clone().project(camera);const x=(p.x*.5+.5)*canvas.clientWidth,y=(-p.y*.5+.5)*canvas.clientHeight;
+        button.hidden=p.z>1||p.z<0||x<48||x>canvas.clientWidth-48||y<85||y>canvas.clientHeight-155;
+        button.style.left=`${x}px`;button.style.top=`${y}px`;
+      }
+      renderer.render(scene,camera);renderNeeded=false;
     }
-    renderer.render(scene,camera);renderNeeded=false;}
     raf=requestAnimationFrame(frame);
   }
-  renderer.shadowMap.autoUpdate = false;renderer.shadowMap.needsUpdate = true;
-  resize();window.addEventListener('resize',resize);canvas.addEventListener('pointermove',pointerMove);canvas.addEventListener('pointerdown',down);canvas.addEventListener('pointerup',up);canvas.addEventListener('click',clickCanvas);canvas.addEventListener('pointercancel',cancel);canvas.addEventListener('pointerleave',leave);canvas.style.touchAction='none';
+  renderer.shadowMap.autoUpdate=false;renderer.shadowMap.needsUpdate=true;
+  resize();window.addEventListener('resize',resize);
+  // Listen on the stable outer surface. Crossing a child hotspot is not leaving the room.
+  surface.addEventListener('pointermove',pointerMove);surface.addEventListener('pointerover',pointerOver);
+  surface.addEventListener('focusin',focusIn);surface.addEventListener('pointerleave',pauseLook);
+  canvas.addEventListener('pointerdown',down);canvas.addEventListener('pointerup',up);
+  canvas.addEventListener('click',clickCanvas);canvas.addEventListener('pointercancel',cancel);canvas.style.touchAction='none';
   raf=requestAnimationFrame(frame);onReady();
   return {
-    setView, setFollow(value){follow=value;if(!value)targetYaw=VIEWS[view];},
-    dispose(){disposed=true;cancelAnimationFrame(raf);window.removeEventListener('resize',resize);canvas.removeEventListener('pointermove',pointerMove);canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('click',clickCanvas);canvas.removeEventListener('pointercancel',cancel);canvas.removeEventListener('pointerleave',leave);scene.traverse(o=>{o.geometry?.dispose();if(o.material){for(const m of [o.material].flat())m.dispose();}});ownedTextures.forEach(t=>t.dispose());renderer.dispose();hotspotRoot.replaceChildren();},
+    setView,pauseLook,
+    setFollow(value){follow=value;pauseLook();},
+    playDog(action){dog.play(action);renderNeeded=true;renderer.shadowMap.needsUpdate=true;},
+    dispose(){
+      disposed=true;cancelAnimationFrame(raf);window.removeEventListener('resize',resize);
+      surface.removeEventListener('pointermove',pointerMove);surface.removeEventListener('pointerover',pointerOver);
+      surface.removeEventListener('focusin',focusIn);surface.removeEventListener('pointerleave',pauseLook);
+      canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointerup',up);
+      canvas.removeEventListener('click',clickCanvas);canvas.removeEventListener('pointercancel',cancel);
+      scene.traverse(o=>{o.geometry?.dispose();if(o.material){for(const m of [o.material].flat())m.dispose();}});
+      ownedTextures.forEach(t=>t.dispose());renderer.dispose();hotspotRoot.replaceChildren();
+    },
   };
 }
