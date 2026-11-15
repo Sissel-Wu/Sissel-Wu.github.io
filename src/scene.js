@@ -37,6 +37,14 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
   function cylinder(rt,rb,h,x,y,z,material=wood,parent=scene,segments=32) {
     const mesh=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,segments),material);mesh.position.set(x,y,z);mesh.castShadow=true;mesh.receiveShadow=true;parent.add(mesh);return mesh;
   }
+  // Build supports between actual contact points, so their ends meet the furniture.
+  function support(from,to,bottomRadius,topRadius,material,parent=scene) {
+    const start=new THREE.Vector3(...from),end=new THREE.Vector3(...to);
+    const midpoint=start.clone().add(end).multiplyScalar(.5);
+    const mesh=cylinder(topRadius,bottomRadius,start.distanceTo(end),...midpoint.toArray(),material,parent,16);
+    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),end.sub(start).normalize());
+    return mesh;
+  }
   function sphere(r,x,y,z,material,parent=scene,scale) {
     const mesh=new THREE.Mesh(new THREE.SphereGeometry(r,24,16),material);mesh.position.set(x,y,z);if(scale)mesh.scale.set(...scale);mesh.castShadow=true;mesh.receiveShadow=true;parent.add(mesh);return mesh;
   }
@@ -129,7 +137,12 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
     ['#64785c','#465f48','#354e3d'].forEach((color,i)=>{ctx.fillStyle=color;ctx.beginPath();ctx.moveTo(0,h);for(let x=0;x<=w;x+=12)ctx.lineTo(x,h*(.61+i*.13)+Math.sin(x*.006+i*2)*h*.13);ctx.lineTo(w,h);ctx.fill();});
     ctx.fillStyle='#f2edcf';ctx.font='italic 52px Georgia';ctx.fillText('a little more',70,205);ctx.fillText('wonder.',70,267);ctx.font='13px sans-serif';ctx.fillText('FILMS & EVERYDAY STORIES',73,324);ctx.fillStyle='#e7e5cf99';ctx.font='10px sans-serif';ctx.fillText('SISSEL  /  VOL. 01',73,65);
   });picture(screen,2.96,1.62,-1.45,2.04,-3.838,false,tv);
-  for(const x of [-2.45,-.45]){const leg=box(.05,.3,.08,x,1.02,-3.85,black,.01,tv);leg.rotation.z=x<-1?.4:-.4;box(.33,.035,.22,x,.89,-3.79,black,.008,tv);}
+  for(const x of [-2.45,-.45]){
+    const outward=x<-1?-.09:.09;
+    support([x+outward,.901,-3.58],[x,1.19,-3.91],.018,.023,black,tv);
+    support([x+outward,.901,-4.1],[x,1.19,-3.91],.018,.023,black,tv);
+    for(const z of [-3.58,-4.1])box(.095,.025,.09,x+outward,.893,z,black,.009,tv);
+  }
   sphere(.012,-.08,1.19,-3.838,mat('led','#bdca8e'),tv);
   interact(tv,'videos',[-1.5,3.17,-3.8],'看点影像','FILMS');
   const consoleGroup=new THREE.Group();scene.add(consoleGroup);
@@ -144,7 +157,8 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
   interact(consoleGroup,'gaming',[.7,1.78,-3.46],'玩乐时间','PLAY');
 
   // Sofa: softly rounded sage upholstery, separate cushions and a draped throw.
-  const sofa=new THREE.Group();sofa.position.set(-3.78,0,-.48);sofa.rotation.y=.32;scene.add(sofa);
+  const sofa=new THREE.Group();sofa.position.set(-2.5,0,1.25);
+  sofa.rotation.y=Math.atan2(-1.45-sofa.position.x,-3.91-sofa.position.z);scene.add(sofa);
   for(const x of [-1.3,1.3])for(const z of [-.46,.46])cylinder(.045,.035,.21,x,.14,z,darkWood,sofa);
   box(3.05,.4,1.3,0,.43,0,green,.12,sofa);box(2.91,.83,.28,0,.96,-.56,green,.11,sofa);
   box(.29,.67,1.33,-1.44,.73,0,green,.12,sofa);box(.29,.67,1.33,1.44,.73,0,green,.12,sofa);
@@ -155,8 +169,8 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
   for(let i=0;i<12;i++)box(.018,.1,.025,.39+i*.05,.3,.635,cream,.003,sofa);
   // Woven rug and low coffee table.
   const rugTex=texture((ctx,w,h)=>{ctx.fillStyle='#dbd1af';ctx.fillRect(0,0,w,h);for(let i=0;i<h;i+=4){ctx.strokeStyle=i%8?'#c0b68e50':'#f6e9c155';ctx.beginPath();ctx.moveTo(0,i);ctx.lineTo(w,i);ctx.stroke();}ctx.strokeStyle='#9a9b7555';ctx.lineWidth=7;ctx.strokeRect(35,30,w-70,h-60);ctx.lineWidth=2;ctx.strokeRect(48,43,w-96,h-86);},1024,768);
-  const rug=new THREE.Mesh(new THREE.PlaneGeometry(5.15,3.5),new THREE.MeshStandardMaterial({map:rugTex,roughness:1}));rug.rotation.x=-Math.PI/2; rug.rotation.z=.055;rug.position.set(-1.55,.013,1.05);rug.receiveShadow=true;scene.add(rug);
-  const coffee=new THREE.Group();coffee.position.set(-1.32,0,1.35);coffee.rotation.y=-.12;scene.add(coffee);
+  const rug=new THREE.Mesh(new THREE.PlaneGeometry(4.4,4.65),new THREE.MeshStandardMaterial({map:rugTex,roughness:1}));rug.rotation.x=-Math.PI/2;rug.rotation.z=.2;rug.position.set(-2,.013,-.1);rug.receiveShadow=true;scene.add(rug);
+  const coffee=new THREE.Group();coffee.position.set(-1.9,0,-1.1);coffee.rotation.y=-.2;scene.add(coffee);
   box(2,.12,1.12,0,.61,0,wood,.18,coffee);for(const x of [-.65,.65]){const leg=box(.12,.55,.65,x,.29,0,darkWood,.025,coffee);leg.rotation.z=x<0?-.1:.1;}
   const book=box(.55,.055,.4,-.3,.7,.08,cream,.008,coffee);book.rotation.y=-.15;const book2=box(.48,.04,.37,-.28,.75,.08,mat('orangeBook','#a96849'),.008,coffee);book2.rotation.y=-.08;
   cylinder(.11,.08,.15,.48,.755,-.12,cream,coffee);cylinder(.089,.089,.006,.48,.833,-.12,darkWood,coffee);
@@ -203,8 +217,44 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
   const chair=new THREE.Group();chair.position.set(3.53,0,-1.59);chair.rotation.y=-.18;scene.add(chair);
   box(.85,.12,.78,0,.59,0,linen,.1,chair);box(.86,.66,.09,0,.99,.36,wood,.09,chair);
   box(.74,.43,.075,0,1.02,.296,linen,.06,chair);
-  for(const x of [-.32,.32])for(const z of [-.28,.28]){const leg=cylinder(.025,.035,.56,x,.29,z,darkWood,chair);leg.rotation.z=x<0?.1:-.1;}
-  for(const x of [-.44,.44]){box(.065,.06,.68,x,.85,.04,wood,.025,chair);box(.045,.3,.045,x,.7,-.23,darkWood,.01,chair);}
+  for(const side of [-1,1]){
+    for(const front of [-1,1])support([side*.39,.025,front*.35],[side*.31,.57,front*.25],.031,.045,darkWood,chair);
+    support([side*.32,.54,.26],[side*.32,1.29,.365],.032,.032,wood,chair);
+    box(.065,.06,.68,side*.44,.85,.04,wood,.025,chair);
+    support([side*.39,.57,-.23],[side*.44,.85,-.23],.026,.026,wood,chair);
+    support([side*.32,.85,.3],[side*.44,.85,.3],.026,.026,wood,chair);
+  }
+
+  // Right-wall bookcase, facing into the room. The entire cabinet is clickable.
+  const bookcase=new THREE.Group();bookcase.position.set(7.02,0,-2.6);bookcase.rotation.y=-Math.PI/2;scene.add(bookcase);
+  const shelfBack=mat('shelfBack','#8c7958');
+  box(2.66,3.04,.055,0,1.74,-.235,shelfBack,.01,bookcase);
+  for(const x of [-1.34,1.34])box(.095,3.13,.56,x,1.72,0,wood,.018,bookcase);
+  for(const y of [.2,.84,1.48,2.12,2.76,3.28])box(2.77,.085,.59,0,y,0,wood,.012,bookcase);
+  box(2.55,.15,.43,0,.075,-.035,darkWood,.018,bookcase);
+  for(const [x,y] of [[.26,.52],[-.38,1.16],[.4,1.8],[-.4,2.44]])box(.055,.56,.5,x,y,0,wood,.008,bookcase);
+  books(-1.15,.885,-.01,5,1.05,bookcase);
+  books(.65,1.525,-.01,5,1.05,bookcase);
+  books(-1.15,2.165,-.01,5,1.08,bookcase);
+  books(-.18,2.805,-.01,6,.85,bookcase);
+  books(.6,.245,-.01,5,1.08,bookcase);
+  // Alternating horizontal stacks, a ceramic vase, and a displayed art book.
+  for(let i=0;i<3;i++){
+    box(.58-i*.035,.07,.35,.76,.925+i*.075,.015,i%2?cream:green,.008,bookcase);
+    box(.66,.07,.36,-.84,.285+i*.075,.015,i%2?clay:cream,.008,bookcase);
+  }
+  cylinder(.095,.16,.28,.82,2.305,.015,clay,bookcase);
+  cylinder(.075,.095,.12,.82,2.505,.015,clay,bookcase);
+  plant(-.84,1.525,.01,.36,bookcase);
+  picture(poster,.3,.4,-.85,3.025,.06,true,bookcase);
+  const bookplate=texture((ctx,w,h)=>{
+    ctx.fillStyle='#e3d8ba';ctx.fillRect(0,0,w,h);
+    ctx.fillStyle='#5d6e50';ctx.font='24px Georgia';ctx.fillText('THE READING ROOM',36,48);
+    ctx.font='10px sans-serif';ctx.fillText('BOOKS  /  FILM  /  MUSIC',38,76);
+  },384,104);
+  box(.83,.4,.16,.25,1.725,.015,cream,.008,bookcase);
+  picture(bookplate,.79,.215,.25,1.81,.105,false,bookcase);
+  interact(bookcase,'culture',[6.69,3.57,-3.2],'书影音','CULTURE');
   // Floating shelf and small objects connecting both corners.
   box(1.55,.08,.28,1.1,3.44,-4.22,wood,.01);books(.53,3.49,-4.23,4,.7);plant(1.58,3.48,-4.2,.43);
   const clockGroup=new THREE.Group();clockGroup.position.set(1.25,2.65,-4.29);scene.add(clockGroup);

@@ -13,13 +13,14 @@ const heading=(eyebrow,title,description)=>`<div class="panel-heading"><div clas
 const postList=category=>posts.filter(p=>p.category===category).map(p=>`<button class="post" data-post="${p.id}"><div><span class="post-tag">${p.tag}</span><h3>${p.title}</h3><small>${p.date} &nbsp; / &nbsp; ${p.read} read</small></div><span>↗</span></button>`).join('');
 function renderPanel(type){
   reelCleanup();reelCleanup=()=>{};currentPanel=type;dialog.scrollTop=0;
-  const titles={videos:'01 / THE TELEVISION',gaming:'02 / THE GAME CONSOLE',work:'03 / THE COMPUTER',photos:'04 / THE CAMERA',index:'MAKE YOURSELF AT HOME'};
+  const titles={videos:'01 / THE TELEVISION',gaming:'02 / THE GAME CONSOLE',work:'03 / THE COMPUTER',photos:'04 / THE CAMERA',culture:'05 / THE BOOKCASE',index:'MAKE YOURSELF AT HOME'};
   kicker.textContent=titles[type];
   if(type==='videos')content.innerHTML=heading('MOVING PICTURES','一些会动的记忆。','用镜头收集日常，也给平凡的时刻多一点时间。')+videos.map((v,i)=>`<button class="video-card" data-video="${i}"><div class="video-image"><img src="${v.image}" alt="${v.title}的示例封面" loading="lazy"><span class="play">▶</span><span class="duration">${v.time}</span></div><div class="card-meta"><h3>${v.title}</h3><span>${v.tag}</span></div><p>${v.subtitle}</p></button>`).join('');
   if(type==='gaming')content.innerHTML=heading('PRESS PAUSE. PRESS PLAY.','认真生活，尽情玩。','关于游戏、虚构世界，以及那些不必有用的快乐。')+postList('gaming');
+  if(type==='culture')content.innerHTML=heading('READ. WATCH. LISTEN.','故事之外，还有回响。','读过的书、看过的电影、反复听的音乐，以及它们留下的念头。')+postList('culture');
   if(type==='work')content.innerHTML=`<div class="panel-heading"><div class="profile-hero"><div class="avatar" aria-hidden="true">s.</div><div><h2 id="panel-title">${profile.name}</h2><p>${profile.role}</p></div></div><span class="sample-label">以下简介、论文与文章均为演示占位</span></div><p class="bio">${profile.bio}</p><div class="tags">${profile.interests.map(t=>`<span>${t}</span>`).join('')}</div><a class="contact-link" href="https://github.com/Sissel-Wu" target="_blank" rel="noreferrer">Find me on GitHub ↗</a><div class="section-title"><h3>Selected publications</h3><span>RESEARCH / 01</span></div>${publications.map(p=>`<details class="publication"><summary><h4>${p.title}</h4><small>${p.authors}<br>${p.venue}</small></summary><p>${p.abstract}</p></details>`).join('')}<div class="section-title"><h3>思考与记录</h3><span>WRITING / 02</span></div>${postList('work')}`;
   if(type==='photos')content.innerHTML=heading('THROUGH THE VIEWFINDER','把瞬间，留在这里。','路过的风景、偶然的光线，和生活里的小小停顿。')+`<div class="photo-grid">${photos.map((p,i)=>`<button class="photo-card" data-photo="${i}" aria-label="查看照片：${p.title}"><img src="${p.src}" alt="${p.title}" loading="lazy"><h3>${p.title}</h3><small>${p.location} &nbsp; / &nbsp; ${p.year}</small></button>`).join('')}</div><p class="bio">照片为 Unsplash 演示素材，不代表作者本人作品。</p>`;
-  if(type==='index')content.innerHTML=heading('FOUR OBJECTS. MANY STORIES.','随意看看。','这个房间里的每一件物品，都是一扇小小的门。')+`<div class="directory">${[['videos','01 / TELEVISION','看点影像','视频、旅行与视觉日记'],['gaming','02 / GAME CONSOLE','玩乐时间','游戏体验与生活碎片'],['work','03 / COMPUTER','认识一下','个人简介、论文与研究笔记'],['photos','04 / CAMERA','光影收藏','照片、风景与城市漫步']].map(([id,num,title,desc])=>`<button data-open="${id}"><small>${num}</small><h3>${title} ↗</h3><p>${desc}</p></button>`).join('')}</div>`;
+  if(type==='index')content.innerHTML=heading('FIVE OBJECTS. MANY STORIES.','随意看看。','这个房间里的每一件物品，都是一扇小小的门。')+`<div class="directory">${[['videos','01 / TELEVISION','看点影像','视频、旅行与视觉日记'],['gaming','02 / GAME CONSOLE','玩乐时间','游戏体验与生活碎片'],['work','03 / COMPUTER','认识一下','个人简介、论文与研究笔记'],['photos','04 / CAMERA','光影收藏','照片、风景与城市漫步'],['culture','05 / BOOKCASE','书影音','阅读笔记、电影与音乐随笔']].map(([id,num,title,desc])=>`<button data-open="${id}"><small>${num}</small><h3>${title} ↗</h3><p>${desc}</p></button>`).join('')}</div>`;
 }
 function openPanel(type){
   if(!dialog.open){lastFocus=document.activeElement;renderPanel(type);dialog.showModal();document.querySelector('#close-dialog').focus();}else renderPanel(type);
@@ -31,7 +32,7 @@ document.querySelector('#close-dialog').addEventListener('click',closePanel);
 document.querySelector('#index-button').addEventListener('click',()=>openPanel('index'));
 function showArticle(id){
   const post=posts.find(p=>p.id===id);if(!post)return;
-  content.innerHTML=`<button class="back-button" data-back="${post.category==='gaming'?'gaming':'work'}">← 返回列表</button>`+heading(post.tag,post.title,`${post.date} · ${post.read} read`)+`<article class="article">${post.body.map(p=>`<p>${escapeHTML(p)}</p>`).join('')}</article>`;dialog.scrollTop=0;content.querySelector('.back-button').focus();
+  content.innerHTML=`<button class="back-button" data-back="${post.category}">← 返回列表</button>`+heading(post.tag,post.title,`${post.date} · ${post.read} read`)+`<article class="article">${post.body.map(p=>`<p>${escapeHTML(p)}</p>`).join('')}</article>`;dialog.scrollTop=0;content.querySelector('.back-button').focus();
 }
 function showVideo(index){
   const v=videos[index];if(!v)return;
