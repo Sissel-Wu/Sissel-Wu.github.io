@@ -43,6 +43,7 @@ npm run preview
 | `src/scene.js` | 房间、家具、材质、灯光、拾取与相机 |
 | `src/navigation.js` | 相机角度范围、书柜投影边界、鼠标移动判定与平滑函数 |
 | `src/dog.js` | 博美犬模型与互动动作 |
+| `src/plant.js` | 共享的盆栽模型：弯曲薄叶、中脊渐变、弧形叶柄与盆沿 |
 | `src/main.js` | 内容面板、文章阅读、分镜播放、照片浏览 |
 | `src/style.css` | 视觉样式与手机布局 |
 | `public/images/` | 已下载到本地的示例摄影素材 |
@@ -50,6 +51,8 @@ npm run preview
 简介、论文作者、日期、文章均明确标记为占位示例，并非真实学术记录。视频目前是动态图片分镜；接入真实视频时，可将 `showVideo` 改成 `<video controls>` 或平台嵌入，并在数据中补上视频 URL。
 
 场景模型、电视画面、窗景与装饰画均由代码生成，不依赖外部 3D 模型。字体来自 Google Fonts（DM Sans / Noto Serif SC），不可用时自动回退到系统字体。摄影素材来自 Unsplash，来源见 `public/images/CREDITS.md`。
+
+四盆植物共享几何体与材质，每盆 2,324 个三角形、4 个网格（原为 7,024 个三角形、20 个网格）。薄叶采用双面不透明材质和顶点颜色，无额外贴图或逐帧动画；该统计是模型预算，不代表整页帧率实测。
 
 ## GitHub Pages
 

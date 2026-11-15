@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { VIEWS, YAW_LIMITS, clampYaw, viewYaw, pointerYaw, smoothYaw, fitRightYaw } from './navigation.js';
 import { createDog } from './dog.js';
+import { createPlant } from './plant.js';
 
 export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -32,6 +33,7 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
   const cream = mat('cream', '#e5dbc1'), green = mat('green', '#717c52'), dark = mat('dark', '#282e28');
   const black = mat('black', '#1c231f', .5), clay = mat('clay', '#b87555');
   const linen = mat('linen', '#bdbb9b'), brass = mat('brass', '#b49a5d', .4, .55);
+  const plantModel = createPlant({ potMaterial: cream, soilMaterial: darkWood });
 
   function box(w,h,d,x,y,z,material=wood,radius=0,parent=scene) {
     const geometry = radius ? new RoundedBoxGeometry(w,h,d,3,radius) : new THREE.BoxGeometry(w,h,d);
@@ -68,13 +70,10 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
     anchors.set(id,{position:new THREE.Vector3(...position),button});
   }
   function plant(x,y,z,size=1,parent=scene) {
-    cylinder(.2*size,.15*size,.32*size,x,y+.16*size,z,cream,parent);
-    cylinder(.175*size,.175*size,.02*size,x,y+.325*size,z,darkWood,parent);
-    for(let i=0;i<9;i++) {
-      const a=i*2.399, height=(.45+(i%4)*.19)*size;
-      const stem=cylinder(.009*size,.012*size,height,x+Math.cos(a)*.07*size,y+.3*size+height/2,z+Math.sin(a)*.07*size,green,parent,8);stem.rotation.z=Math.cos(a)*.15;
-      const leaf=sphere(.15*size,x+Math.cos(a)*.22*size,y+.3*size+height,z+Math.sin(a)*.22*size,mat('leaf'+i%3,['#526344','#778457','#8a9464'][i%3]),parent,[.6,1.8,.2]);leaf.rotation.set(.35, a, Math.sin(a)*.65);
-    }
+    const model=plantModel.clone();
+    model.position.set(x,y,z);model.scale.setScalar(size);
+    parent.add(model);
+    return model;
   }
   function books(x,y,z,count=5,scale=1,parent=scene) {
     const colors=['#75816a','#c9b58c','#986b50','#d8cfb6','#788b8b','#5a6250'];
@@ -254,7 +253,7 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
   }
   cylinder(.095,.16,.28,.82,2.305,.015,clay,bookcase);
   cylinder(.075,.095,.12,.82,2.505,.015,clay,bookcase);
-  plant(-.84,1.525,.01,.36,bookcase);
+  plant(-.84,1.525,.045,.34,bookcase);
   picture(poster,.3,.4,-.85,3.025,.06,true,bookcase);
   const bookplate=texture((ctx,w,h)=>{
     ctx.fillStyle='#e3d8ba';ctx.fillRect(0,0,w,h);
