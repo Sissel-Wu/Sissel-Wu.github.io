@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { VIEWS, YAW_LIMITS, clampYaw, viewYaw, smoothYaw, fitRightYaw, createPointerLook } from './navigation.js';
+import { VIEWS, YAW_LIMITS, clampYaw, viewYaw, pointerYaw, smoothYaw, fitRightYaw } from './navigation.js';
 import { createDog } from './dog.js';
 
 export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
@@ -24,7 +24,6 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
   const clickables = [], anchors = new Map(), ownedTextures = [];
   const hotspotRoot = document.querySelector('#hotspots');
   const surface = document.querySelector('#app');
-  const pointerLook = createPointerLook();
   let yawLimits = [...YAW_LIMITS], lastShadowUpdate = 0;
   const materials = {};
   const mat = (name, color, roughness = .8, metalness = 0) => materials[name] ||= new THREE.MeshStandardMaterial({ color, roughness, metalness });
@@ -302,13 +301,6 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
     raycaster.setFromCamera(pointer,camera);
     return raycaster.intersectObjects(clickables,false)[0];
   }
-  function nearHotspot(event){
-    return [...anchors.values()].some(({button})=>{
-      if(button.hidden)return false;
-      const r=button.getBoundingClientRect(),padding=24;
-      return event.clientX>=r.left-padding&&event.clientX<=r.right+padding&&event.clientY>=r.top-padding&&event.clientY<=r.bottom+padding;
-    });
-  }
   function pointerMove(event){
     if(document.querySelector('dialog').open)return;
     if(dragging){
@@ -316,20 +308,13 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
       targetYaw=clampYaw(startYaw-delta/canvas.clientWidth*.95,yawLimits);return;
     }
     if(event.pointerType!=='mouse')return;
-    const control=event.target.closest?.('button,a,dialog,.pet-card');
     const hit=event.target===canvas?ray(event):null;
-    const paused=!!control||nearHotspot(event)||!!hit;
     const rect=canvas.getBoundingClientRect();
-    const next=pointerLook.move({x:event.clientX,y:event.clientY,normalizedX:(event.clientX-rect.left)/rect.width*2-1,view,yaw,paused,limits:yawLimits});
-    // Hotspot protection also stops an in-progress ease immediately.
-    if(paused)pauseLook();
-    else if(follow&&next!==null)targetYaw=next;
+    // The same screen position always sets the same target, regardless of the
+    // element under the cursor. Moving labels cannot feed back into camera motion.
+    if(follow)targetYaw=pointerYaw(view,(event.clientX-rect.left)/rect.width*2-1,yawLimits);
     canvas.style.cursor=hit?'pointer':'grab';
   }
-  function pointerOver(event){
-    if(event.target.closest?.('.hotspot,.pet-card'))pauseLook();
-  }
-  function focusIn(event){if(event.target.closest?.('.hotspot,.pet-card'))pauseLook();}
   function down(event){
     if(event.button!==0)return;
     pauseLook();dragging=true;startX=event.clientX;startYaw=yaw;moved=false;canvas.setPointerCapture(event.pointerId);
@@ -361,19 +346,17 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
   renderer.shadowMap.autoUpdate=false;renderer.shadowMap.needsUpdate=true;
   resize();window.addEventListener('resize',resize);
   // Listen on the stable outer surface. Crossing a child hotspot is not leaving the room.
-  surface.addEventListener('pointermove',pointerMove);surface.addEventListener('pointerover',pointerOver);
-  surface.addEventListener('focusin',focusIn);surface.addEventListener('pointerleave',pauseLook);
+  surface.addEventListener('pointermove',pointerMove);
   canvas.addEventListener('pointerdown',down);canvas.addEventListener('pointerup',up);
   canvas.addEventListener('click',clickCanvas);canvas.addEventListener('pointercancel',cancel);canvas.style.touchAction='none';
   raf=requestAnimationFrame(frame);onReady();
   return {
-    setView,pauseLook,
+    setView,
     setFollow(value){follow=value;pauseLook();},
     playDog(action){dog.play(action);renderNeeded=true;renderer.shadowMap.needsUpdate=true;},
     dispose(){
       disposed=true;cancelAnimationFrame(raf);window.removeEventListener('resize',resize);
-      surface.removeEventListener('pointermove',pointerMove);surface.removeEventListener('pointerover',pointerOver);
-      surface.removeEventListener('focusin',focusIn);surface.removeEventListener('pointerleave',pauseLook);
+      surface.removeEventListener('pointermove',pointerMove);
       canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointerup',up);
       canvas.removeEventListener('click',clickCanvas);canvas.removeEventListener('pointercancel',cancel);
       scene.traverse(o=>{o.geometry?.dispose();if(o.material){for(const m of [o.material].flat())m.dispose();}});

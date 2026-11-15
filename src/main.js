@@ -11,7 +11,7 @@ let following=!reducedMotion;
 const petCard=document.querySelector('#pet-card');
 let petTrigger;
 function playWithDog(action){
-  room?.pauseLook();room?.playDog(action);
+  room?.playDog(action);
   const messages={pet:'团子开心地眯起眼，尾巴摇个不停。♡',paw:'小爪子给你！今天也要好好相处。',spin:'看我的！团子兴奋地转了一圈。'};
   document.querySelector('#pet-status').textContent=room?messages[action]:'团子在窝里打了个哈欠，向你问好。♡';
 }
@@ -41,7 +41,7 @@ function renderPanel(type){
 }
 function openPanel(type){
   if(type==='dog'){openDog();return;}
-  petCard.hidden=true;room?.pauseLook();
+  petCard.hidden=true;
   if(!dialog.open){lastFocus=document.activeElement;renderPanel(type);dialog.showModal();document.querySelector('#close-dialog').focus();}else renderPanel(type);
 }
 function closePanel(){dialog.close();}

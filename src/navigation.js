@@ -23,17 +23,3 @@ export function fitRightYaw(projectRightEdge, edge = 0.92) {
   }
   return high;
 }
-
-// Browser hit targets can change without the physical pointer moving. Such events
-// must never restart camera movement after a hotspot has stopped it.
-export function createPointerLook() {
-  let lastX, lastY;
-  return {
-    move({ x, y, normalizedX, view, yaw, paused, limits = YAW_LIMITS }) {
-      const changed = lastX === undefined || Math.hypot(x - lastX, y - lastY) > 1;
-      if (changed) { lastX = x; lastY = y; }
-      if (paused) return yaw;
-      return changed ? pointerYaw(view, normalizedX, limits) : null;
-    },
-  };
-}

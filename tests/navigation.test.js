@@ -29,16 +29,19 @@ test('mouse can reach both room limits from either selected view',()=>{
   }
 });
 
-test('stationary pointer stays stopped across canvas/hotspot boundary events', async()=>{
-  const {createPointerLook}=await import('../src/navigation.js');
-  const look=createPointerLook();
-  const cursor={x:900,y:400,normalizedX:.7,view:'desk',yaw:.18};
-  assert.ok(look.move({...cursor,paused:false})>cursor.yaw);
-  assert.equal(look.move({...cursor,paused:true}),cursor.yaw);
-  // Synthetic hit-target changes at identical screen coordinates cannot restart the turn.
-  for(let i=0;i<50;i++)assert.equal(look.move({...cursor,paused:false}),null);
-  assert.equal(look.move({...cursor,x:900.5,paused:false}),null);
-  assert.notEqual(look.move({...cursor,x:940,paused:false}),null);
+test('repeated pointer coordinates keep converging without reversing or stopping',()=>{
+  for(const view of Object.keys(VIEWS)){
+    let yaw=YAW_LIMITS[0];
+    const target=pointerYaw(view,-.3);
+    // Repeated events from a changing hit target must not reset the camera target.
+    for(let i=0;i<180;i++){
+      const next=smoothYaw(yaw,pointerYaw(view,-.3),1/60);
+      assert.ok(next>yaw&&next<=target);
+      yaw=next;
+    }
+    assert.ok(Math.abs(yaw-target)<.001);
+    assert.ok(pointerYaw(view,-.2999)>target,'small mouse movements still update the target');
+  }
 });
 
 test('right limit fits the whole cabinet, without extra rotation on wide screens', async()=>{
