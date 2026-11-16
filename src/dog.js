@@ -1,66 +1,54 @@
 import * as THREE from 'three';
+import { blockGeometry, pixelMaterial } from './voxel.js';
 
-// A small, fluffy Pomeranian assembled locally from soft, low-poly forms.
+// A block-built Pomeranian; each animated part keeps its own pivot.
 export function createDog({ reducedMotion = false } = {}) {
-  const root = new THREE.Group();
+  const root = new THREE.Group();root.name = 'voxel-dog';
   root.position.set(.15, 0, .55);
-  const baseYaw = -.18;
-  root.rotation.y = baseYaw;
-  const fur = new THREE.MeshStandardMaterial({ color: '#d5a265', roughness: .95 });
-  const lightFur = new THREE.MeshStandardMaterial({ color: '#f0ddad', roughness: 1 });
-  const cream = new THREE.MeshStandardMaterial({ color: '#fff0cd', roughness: 1 });
-  const dark = new THREE.MeshStandardMaterial({ color: '#30281f', roughness: .3 });
-  const pink = new THREE.MeshStandardMaterial({ color: '#cf8e78', roughness: .8 });
-  const eyeLight = new THREE.MeshBasicMaterial({ color: '#fff6df' });
-  function puff(radius, position, scale, material = fur, parent = root) {
-    const mesh = new THREE.Mesh(new THREE.SphereGeometry(radius, 16, 12), material);
-    mesh.position.set(...position);mesh.scale.set(...scale);mesh.castShadow = true;mesh.receiveShadow = true;parent.add(mesh);
-    return mesh;
+  const baseYaw = -.18;root.rotation.y = baseYaw;
+  const fur = pixelMaterial('#cf995b'), lightFur = pixelMaterial('#edce94');
+  const cream = pixelMaterial('#ffebbd');
+  const dark = new THREE.MeshStandardMaterial({ color: '#30281f', roughness: 1 });
+  const pink = new THREE.MeshStandardMaterial({ color: '#dc927f', roughness: 1 });
+  function block(w,h,d,x,y,z,material=fur,parent=root) {
+    const mesh = new THREE.Mesh(blockGeometry(w,h,d),material);
+    mesh.position.set(x,y,z);mesh.castShadow = mesh.receiveShadow = true;parent.add(mesh);return mesh;
   }
-  puff(.34, [0,.44,-.08], [1,1.05,1.18]);
+  block(.52,.5,.65,0,.47,-.08);
+  block(.64,.34,.5,0,.62,.06,lightFur);
+  block(.48,.18,.42,0,.84,.1,lightFur);
+  block(.34,.36,.09,0,.53,.35,cream);
   for (const side of [-1,1]) {
-    puff(.18, [side*.24,.21,-.2], [1,.9,1.2], lightFur);
+    block(.22,.23,.29,side*.25,.18,-.22,lightFur);
+    block(.22,.12,.29,side*.25,.07,-.15,cream);
     const leg = new THREE.Group();leg.position.set(side*.17,.39,.21);root.add(leg);
-    puff(.095, [0,-.13,0], [1,1.6,1], lightFur, leg);
-    puff(.105, [0,-.3,.045], [1.05,.65,1.4], cream, leg);
-    if (side === -1) root.userData.paw = leg;
+    block(.15,.3,.16,0,-.14,0,lightFur,leg);
+    block(.18,.12,.26,0,-.3,.045,cream,leg);
+    if(side === -1) root.userData.paw = leg;
+    block(.12,.22,.28,side*.34,.61,.1,cream);
   }
-  // A generous ruff is the characteristic silhouette of a Pomeranian.
-  puff(.32, [0,.64,.07], [1.18,1.1,1], lightFur);
-  for (let i=0;i<16;i++) {
-    const a = i / 16 * Math.PI * 2;
-    puff(.115, [Math.cos(a)*.3,.64+Math.sin(a)*.3,.085+(i%3)*.027], [1,.95,1.3], i%3 ? lightFur : cream);
-  }
-  puff(.23, [0,.53,.3], [1,1.15,.6], cream);
+  const head = new THREE.Group();head.position.set(0,1,.12);root.add(head);
+  block(.52,.42,.46,0,0,0,lightFur,head);
+  block(.6,.18,.4,0,-.1,0,lightFur,head);
   const eyes = [];
-  const head = new THREE.Group();head.position.set(0,.99,.12);root.add(head);
-  puff(.28, [0,0,0], [1.08,.97,.93], lightFur, head);
   for (const side of [-1,1]) {
-    puff(.12, [side*.23,-.06,.015], [1.05,.85,1], lightFur, head);
-    const ear = new THREE.Mesh(new THREE.ConeGeometry(.12,.26,3), fur);
-    ear.position.set(side*.19,.22,-.015);ear.rotation.set(-.12,Math.PI,side*-.2);ear.castShadow = true;head.add(ear);
-    const inside = new THREE.Mesh(new THREE.ConeGeometry(.065,.15,3), pink);
-    inside.position.set(side*.19,.23,.043);inside.rotation.copy(ear.rotation);head.add(inside);
-    eyes.push(puff(.037, [side*.115,.015,.245], [1,1.15,.6], dark, head));
-    puff(.009, [side*.115-.008,.028,.266], [1,1,1], eyeLight, head);
-    puff(.093, [side*.053,-.075,.265], [1,.8,1], cream, head);
+    block(.15,.2,.15,side*.185,.29,-.06,fur,head);
+    block(.09,.08,.13,side*.185,.43,-.06,fur,head);
+    block(.075,.12,.012,side*.185,.29,.021,pink,head);
+    const eye = block(.065,.065,.025,side*.13,.035,.239,dark,head);
+    eye.scale.y = 1.15;eyes.push(eye);
+    block(.019,.019,.009,side*.13-.012,.052,.256,cream,head);
   }
-  puff(.044, [0,-.045,.349], [1.1,.75,.7], dark, head);
-  puff(.052, [0,-.133,.28], [1,.7,.45], dark, head);
-  puff(.029, [0,-.153,.305], [.8,1.2,.5], pink, head);
+  block(.26,.14,.16,0,-.09,.28,cream,head);
+  block(.09,.065,.035,0,-.04,.37,dark,head);
+  block(.1,.025,.012,0,-.157,.363,dark,head);
+  block(.045,.065,.02,.015,-.18,.37,pink,head);
   const tail = new THREE.Group();tail.position.set(.08,.6,-.35);root.add(tail);
-  for (let i=0;i<10;i++) {
-    const a = i / 9 * Math.PI * 1.45;
-    puff(.12-i*.004, [Math.sin(a)*.17,.15+Math.cos(a)*.17,-.09-i*.009], [1.1,1,1.1], i<5?lightFur:cream, tail);
-  }
-  const collar = new THREE.Mesh(new THREE.TorusGeometry(.23,.025,8,32), new THREE.MeshStandardMaterial({color:'#75825c',roughness:.85}));
-  collar.rotation.x=Math.PI/2;collar.position.set(0,.73,.11);root.add(collar);
-  puff(.04, [0,.7,.345], [.8,1,.3], new THREE.MeshStandardMaterial({color:'#b99a54',metalness:.5,roughness:.45}));
-  // A few asymmetric tufts keep the body from reading as a smooth toy sphere.
-  for (let i=0;i<10;i++) {
-    const a=i/10*Math.PI*2;
-    puff(.09,[Math.cos(a)*.28,.4+(i%3)*.05,-.08+Math.sin(a)*.31],[1,.9,1],i%2?fur:lightFur);
-  }
+  block(.18,.32,.18,0,.12,-.12,lightFur,tail);
+  block(.18,.18,.32,0,.35,-.05,lightFur,tail);
+  block(.18,.17,.16,0,.26,.14,cream,tail);
+  block(.5,.075,.46,0,.8,.1,pixelMaterial('#668248'));
+  block(.075,.09,.025,0,.75,.347,pixelMaterial('#c9a753'));
   let action = null, started = 0, finishing = false;
   const paw = root.userData.paw;
   function resetPose() {
