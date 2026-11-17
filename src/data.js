@@ -16,7 +16,12 @@ export const posts = [
   { id:'worlds', category:'gaming', tag:'PLAY & THINK', title:'那些让我舍不得离开的游戏世界', date:'2026.08.30', read:'4 min', body:['让我想念一个游戏世界的，常常不是主线任务，而是雨声、路边的灯，以及某个每天都会路过的小角落。','空间、声音与细节共同构成一种归属感。这也是这个数字工作室想要慢慢接近的感觉。','本文为 MVP 演示内容。'] },
   { id:'reading', category:'culture', tag:'READING NOTES', title:'读完一本书之后，留下来的是什么', date:'2026.11.08', read:'5 min', body:['合上书之后，情节会慢慢模糊，但某个房间的光线、一句没有说完的话，却可能留下很久。我喜欢这样的阅读：它不急着给出答案，而是让一个问题陪我走一段路。','书架上的书有时也是时间的坐标。重新翻开同一页，会遇见当时画下横线的自己，也会发现现在已经在意不同的事情。','这是书影音栏目的示例读书笔记，真实的阅读记录将在这里陆续分享。'] },
   { id:'cinema', category:'culture', tag:'CINEMA DIARY', title:'电影散场以后，仍想多坐一会儿', date:'2026.10.19', read:'6 min', body:['有些电影的余韵，从字幕开始的时候才真正出现。灯亮起来，故事已经结束，但银幕上的一段沉默还留在座位之间。','我想记录的不只是剧情和评分，也包括画面怎样组织空间，声音怎样让一场普通的相遇变得难忘，以及那些很难用一句话概括的感受。','本文为影评栏目的占位示例，不对应某一部具体电影。'] },
-  { id:'listening', category:'culture', tag:'ON REPEAT', title:'给一个下雨的下午，选一张唱片', date:'2026.09.27', read:'4 min', body:['让一张专辑从第一首慢慢放到最后一首，是一种久违的耐心。音乐不必始终在背景里，有时也可以成为这个下午唯一正在发生的事。','喜欢的旋律会和当时的天气、房间、心情连接在一起。下一次听见它，也就重新打开了那一小段时间。','这是音乐随笔的演示内容。'] },
+  { id:'listening', category:'culture', topic:'music', tag:'ON REPEAT', title:'给一个下雨的下午，选一张唱片', date:'2026.09.27', read:'4 min', body:['让一张专辑从第一首慢慢放到最后一首，是一种久违的耐心。音乐不必始终在背景里，有时也可以成为这个下午唯一正在发生的事。','喜欢的旋律会和当时的天气、房间、心情连接在一起。下一次听见它，也就重新打开了那一小段时间。','这是音乐随笔的演示内容。'] },
+];
+// Original synthesized demo pieces, stored locally; replace with your own tracks.
+export const musicTracks = [
+  {title:'雨日下午',mood:'轻柔琴音 · 放空片刻',duration:'0:32',src:'./audio/rainy-afternoon.wav'},
+  {title:'夜色慢下来',mood:'温暖和弦 · 留一盏灯',duration:'0:32',src:'./audio/after-hours.wav'},
 ];
 export const videos = [
   { title:'日常之间', subtitle:'A quiet collection of ordinary moments.', tag:'VISUAL DIARY', time:'00:12', image:'./images/coast.jpg' },

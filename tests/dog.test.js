@@ -30,3 +30,15 @@ test('reduced motion keeps the dog still while interaction feedback remains avai
   assert.equal(dog.active,false);
   dispose(dog.root);
 });
+
+test('a dog facing the viewer at the middle of the room keeps that heading after interactions',()=>{
+  const facingYaw=-Math.PI/4,dog=createDog({facingYaw});
+  for(const action of ['pet','paw','spin']){
+    dog.play(action,0);dog.update(1000);dog.update(4000);
+    assert.equal(dog.root.rotation.y,facingYaw);
+  }
+  const reduced=createDog({facingYaw,reducedMotion:true});
+  reduced.play('spin',0);reduced.update(1000);
+  assert.equal(reduced.root.rotation.y,facingYaw);
+  dispose(dog.root);dispose(reduced.root);
+});

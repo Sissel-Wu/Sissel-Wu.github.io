@@ -1,10 +1,11 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { blockGeometry, steppedGeometry, pixelMaterial } from './voxel.js';
-import { VIEWS, YAW_LIMITS, clampYaw, viewYaw, pointerYaw, smoothYaw, fitRightYaw } from './navigation.js';
+import { VIEWS, YAW_LIMITS, clampYaw, viewYaw, pointerYaw, smoothYaw } from './navigation.js';
 import { createDog } from './dog.js';
 import { createPlant } from './plant.js';
 import { createVideoScreen, createTerminalScreen } from './screens.js';
+import { createWindowFrame, createWindowWallSections, createPhotoCamera, createRecordPlayer } from './fixtures.js';
 
 export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -18,16 +19,21 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color('#ded7c5');
   scene.fog = new THREE.Fog('#ded7c5', 19, 37);
-  const camera = new THREE.PerspectiveCamera(49, 1, .1, 70);
+  const room={left:-6.2,right:4.25,front:-4.5,back:4.8};
+  const roomWidth=room.right-room.left,roomDepth=room.back-room.front;
+  const roomCenterX=(room.left+room.right)/2,roomCenterZ=(room.front+room.back)/2;
+  const deskCenterZ=2.37;
+  const camera = new THREE.PerspectiveCamera(54, 1, .1, 70);
   // Camera position is fixed; only its horizontal look direction changes.
-  camera.position.set(0, 2.9, 7.4);
+  camera.position.set(-1.45, 2.7, 2);
   let view = 'living', yaw = VIEWS.living, targetYaw = yaw, follow = !reducedMotion, dragging = false;
   let startX = 0, startYaw = 0, moved = false, lastTime = 0, raf = 0, disposed = false, renderNeeded = true;
   const raycaster = new THREE.Raycaster(), pointer = new THREE.Vector2();
   const clickables = [], anchors = new Map(), ownedTextures = [];
   const hotspotRoot = document.querySelector('#hotspots');
   const surface = document.querySelector('#app');
-  let yawLimits = [...YAW_LIMITS], lastShadowUpdate = 0;
+  const yawLimits = YAW_LIMITS;
+  let lastShadowUpdate = 0;
   const materials = {};
   const mat = (name, color) => materials[name] ||= pixelMaterial(color,
     /wood|floor|shelf/i.test(name) ? 'wood' : /plaster|sideWall/.test(name) ? 'brick' :
@@ -71,7 +77,7 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
     const button=document.createElement('button');button.className='hotspot';button.dataset.open=id;
     button.innerHTML=`<span class="hotspot-dot">+</span><span>${label}</span><em>${english}</em>`;
     button.setAttribute('aria-label',id==='dog'?'和博美犬团子互动':`打开${label}`);hotspotRoot.append(button);
-    anchors.set(id,{position:new THREE.Vector3(...position),button});
+    anchors.set(id,{position:new THREE.Vector3(...position),parent:group.parent,button});
   }
   function plant(x,y,z,size=1,parent=scene,variant='broadleaf') {
     if(!plantModels.has(variant))plantModels.set(variant,createPlant({
@@ -91,20 +97,19 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
   const sunlight=new THREE.DirectionalLight('#ffe1ac',3.3);sunlight.position.set(6,8,1);sunlight.castShadow=true;sunlight.shadow.mapSize.set(2048,2048);sunlight.shadow.camera.left=-10;sunlight.shadow.camera.right=10;sunlight.shadow.camera.top=9;sunlight.shadow.camera.bottom=-8;sunlight.shadow.normalBias=.035;sunlight.shadow.bias=-.00015;sunlight.shadow.radius=4;scene.add(sunlight);
   const fill=new THREE.DirectionalLight('#e4f0e1',1.2);fill.position.set(-5,4,6);scene.add(fill);
 
-  // Architecture: an open, continuous room with a living area and an adjacent desk.
-  box(15,.2,18,0,-.12,3,mat('floor','#c4aa7d'));
+  // A compact room: TV on the front wall, desk directly below the side window.
+  box(roomWidth,.2,roomDepth,roomCenterX,-.12,roomCenterZ,mat('floor','#c4aa7d'));
   const floorMaterial=mat('floorBoards','#b99560');
-  const floorTexture=floorMaterial.map;floorTexture.repeat.set(15,18);
-  const floor=new THREE.Mesh(new THREE.PlaneGeometry(15,18),new THREE.MeshStandardMaterial({map:floorTexture,roughness:.83}));floor.rotation.x=-Math.PI/2;floor.position.set(0,-.012,3);floor.receiveShadow=true;scene.add(floor);
-  // Four wall sections leave a real opening behind the window frame.
-  box(10.3,6,.18,-2.35,2.99,-4.5,plaster);
-  box(1.2,6,.18,6.9,2.99,-4.5,plaster);
-  box(3.5,1.69,.18,4.55,.835,-4.5,plaster);
-  box(3.5,1.71,.18,4.55,5.135,-4.5,plaster);
-  box(.18,6,17,-7.45,2.99,3.9,plaster);
-  box(.18,6,17,7.45,2.99,3.9,sideWall);
-  box(15,.13,.08,0,.07,-4.35,wood);
-  box(.08,.13,17,7.32,.07,3.9,wood);
+  const floorTexture=floorMaterial.map;floorTexture.repeat.set(roomWidth,roomDepth);
+  const floor=new THREE.Mesh(new THREE.PlaneGeometry(roomWidth,roomDepth),new THREE.MeshStandardMaterial({map:floorTexture,roughness:.83}));floor.rotation.x=-Math.PI/2;floor.position.set(roomCenterX,-.012,roomCenterZ);floor.receiveShadow=true;scene.add(floor);
+  box(roomWidth,6,.18,roomCenterX,2.99,room.front,plaster);
+  box(roomWidth,6,.18,roomCenterX,2.99,room.back,plaster);
+  box(.18,6,roomDepth,room.left,2.99,roomCenterZ,plaster);
+  box(roomWidth,.13,.08,roomCenterX,.07,room.front+.15,wood);
+  box(.08,.13,roomDepth,room.right-.13,.07,roomCenterZ,wood);
+  box(roomWidth,.13,.08,roomCenterX,.07,room.back-.15,wood);
+  const windowWall=new THREE.Group();windowWall.position.set(room.right,0,deskCenterZ);windowWall.rotation.y=-Math.PI/2;scene.add(windowWall);
+  windowWall.add(createWindowWallSections(sideWall,room.front-deskCenterZ,room.back-deskCenterZ));
   // Quiet sky with generous empty space; the frame has a consistent reveal.
   const windowView=texture((ctx,w,h)=>{
     ctx.fillStyle='#b9d5d6';ctx.fillRect(0,0,w,h);
@@ -114,20 +119,15 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
     for(const [x,y,width] of [[0,54,24],[24,51,24],[48,53,24],[72,50,24]])ctx.fillRect(x,y,width,h-y);
     ctx.fillStyle='#8da18c';ctx.fillRect(0,62,w,10);
   },96,72);
-  picture(windowView,3.7,2.8,4.55,2.98,-4.57,false);
+  picture(windowView,3.7,2.8,0,2.98,-.07,false,windowWall);
   const windowFrame=mat('windowWood','#b6956c');
-  // Outer stiles end exactly at the top and bottom rails, with no overlaps.
-  for(const x of [2.8,6.3])box(.14,2.6,.3,x,2.98,-4.39,windowFrame);
-  for(const y of [1.61,4.35])box(3.64,.14,.3,4.55,y,-4.39,windowFrame);
-  box(.075,2.6,.15,4.55,2.98,-4.305,windowFrame);
-  box(3.36,.075,.15,4.55,3.12,-4.305,windowFrame);
-  box(3.86,.12,.52,4.55,1.48,-4.23,windowFrame);
-  // Flat pleats replace the overlapping stacks of chunky columns.
-  box(4.34,.055,.065,4.55,4.57,-4.08,darkWood);
+  windowWall.add(createWindowFrame(windowFrame));
+  box(4.34,.055,.065,0,4.57,.42,darkWood,0,windowWall);
   const curtainColors=['#426d73','#638a8d'];
   for(const side of [-1,1])for(let i=0;i<4;i++) {
-    box(.105,2.85,.07,4.55+side*(1.84+i*.105),3.08,-4.09-(i%2)*.035,mat('curtain'+i%2,curtainColors[i%2]));
+    box(.105,2.85,.07,side*(1.84+i*.105),3.08,.41-(i%2)*.035,mat('curtain'+i%2,curtainColors[i%2]),0,windowWall);
   }
+  plant(1.13,1.54,.31,.68,windowWall,'cactus');
 
   // Living area: low oak media console, screen, books, and a game console.
   const media=new THREE.Group();scene.add(media);
@@ -163,7 +163,7 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
   interact(consoleGroup,'gaming',[.7,1.78,-3.46],'玩乐时间','PLAY');
 
   // Block-built sage sofa, square cushions and a pixel-weave throw.
-  const sofa=new THREE.Group();sofa.position.set(-2.5,0,1.25);
+  const sofa=new THREE.Group();sofa.position.set(-4.3,0,-.6);sofa.scale.setScalar(.85);
   sofa.rotation.y=Math.atan2(-1.45-sofa.position.x,-3.91-sofa.position.z);scene.add(sofa);
   for(const x of [-1.3,1.3])for(const z of [-.46,.46])column(.045,.035,.21,x,.14,z,darkWood,sofa);
   box(3.05,.4,1.3,0,.43,0,green,.12,sofa);box(2.91,.83,.28,0,.96,-.56,green,.11,sofa);
@@ -181,8 +181,8 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
     ctx.strokeStyle='#a47750';ctx.lineWidth=1;ctx.strokeRect(6,6,w-12,h-12);
     ctx.fillStyle='#8a946b';for(let x=10;x<w-8;x+=8){ctx.fillRect(x,9,3,3);ctx.fillRect(x,h-12,3,3);}
   },64,64);
-  const rug=new THREE.Mesh(new THREE.PlaneGeometry(4.4,4.65),new THREE.MeshStandardMaterial({map:rugTex,roughness:1}));rug.rotation.x=-Math.PI/2;rug.rotation.z=.2;rug.position.set(-2,.013,-.1);rug.receiveShadow=true;scene.add(rug);
-  const coffee=new THREE.Group();coffee.position.set(-1.9,0,-1.1);coffee.rotation.y=-.2;scene.add(coffee);
+  const rug=new THREE.Mesh(new THREE.PlaneGeometry(4.4,3.9),new THREE.MeshStandardMaterial({map:rugTex,roughness:1}));rug.rotation.x=-Math.PI/2;rug.rotation.z=.2;rug.position.set(-2.5,.013,-1.65);rug.receiveShadow=true;scene.add(rug);
+  const coffee=new THREE.Group();coffee.position.set(-2.1,0,-2.05);coffee.scale.setScalar(.85);coffee.rotation.y=-.2;scene.add(coffee);
   box(2,.12,1.12,0,.61,0,wood,.18,coffee);for(const x of [-.65,.65]){const leg=box(.12,.55,.65,x,.29,0,darkWood,.025,coffee);leg.rotation.z=x<0?-.1:.1;}
   const book=box(.55,.055,.4,-.3,.7,.08,cream,.008,coffee);book.rotation.y=-.15;const book2=box(.48,.04,.37,-.28,.75,.08,mat('orangeBook','#a96849'),.008,coffee);book2.rotation.y=-.08;
   column(.11,.08,.15,.48,.755,-.12,cream,coffee);column(.089,.089,.006,.48,.833,-.12,darkWood,coffee);
@@ -190,10 +190,16 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
   column(.16,.16,.02,.48,.68,-.12,linen,coffee);
 
   // A little roommate in the open living area, with a linen mat and a toy ball.
-  const dog = createDog({ reducedMotion });scene.add(dog.root);
-  const dogMat = column(.67,.67,.025,.15,.015,.55,linen);dogMat.scale.z=.86;
+  const middleYaw=(VIEWS.living+VIEWS.desk)/2,dogDistance=5.7;
+  const dogPosition=new THREE.Vector3(camera.position.x+Math.sin(middleYaw)*dogDistance,0,
+    camera.position.z-Math.cos(middleYaw)*dogDistance);
+  const dogArea=new THREE.Group();scene.add(dogArea);
+  const dog = createDog({ reducedMotion, facingYaw:-middleYaw });
+  // Keep the dog, mat, ball and label together, with its rest pose facing us.
+  dogArea.position.copy(dogPosition).sub(dog.root.position);dogArea.add(dog.root);
+  const dogMat = column(.67,.67,.025,.15,.015,.55,linen,dogArea);dogMat.scale.z=.86;
   // A stepped sphere, not a single cube: stripe and highlight identify a toy ball.
-  const ball=new THREE.Group();ball.name='striped-voxel-ball';ball.position.set(.98,.175,.87);scene.add(ball);
+  const ball=new THREE.Group();ball.name='striped-voxel-ball';ball.position.set(.8,.175,1.1);dogArea.add(ball);
   const ballColors=[mat('ballTeal','#4a8c92'),mat('ballStripe','#efdfad'),mat('ballOrange','#c87948')];
   const cell=.05, ballParts=[[],[],[]];
   for(let x=-3;x<=3;x++)for(let y=-3;y<=3;y++)for(let z=-3;z<=3;z++){
@@ -207,6 +213,11 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
     parts.forEach(part=>part.dispose());mesh.castShadow=mesh.receiveShadow=true;ball.add(mesh);
   });
   interact(dog.root,'dog',[.15,1.65,.55],'团子 · 摸摸头','HELLO');
+
+  const recordPlayer=createRecordPlayer({wood,darkWood,black,
+    metal:mat('recordMetal','#8b937f'),label:clay,cloth:linen});
+  recordPlayer.position.set(3.05,0,room.front+.55);scene.add(recordPlayer);
+  interact(recordPlayer,'music',[recordPlayer.position.x,2.13,recordPlayer.position.z+.1],'放张唱片','MUSIC');
 
   // Gallery print and a full-height Christmas tree.
   const poster=texture((ctx,w,h)=>{
@@ -235,15 +246,22 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
     ctx.fillStyle='#335344';ctx.fillRect(0,32,8,4);ctx.fillRect(0,29,4,3);ctx.fillRect(56,33,8,3);
   },64,36);
   picture(landscape,1.6,.9,-3.95,3.58,-4.34);
-  plant(-5.1,.02,-3.4,2.15,scene,'christmas');
+  plant(-4.85,.02,-3.5,1.65,scene,'christmas');
 
-  // Work area: desk, chair, computer, keyboard, camera and shelf.
-  const desk=new THREE.Group();scene.add(desk);
+  // Face the right wall, exactly a quarter turn from the TV. Keep desk items
+  // in one coordinate system so their geometry and interaction labels move together.
+  const workArea=new THREE.Group();scene.add(workArea);
+  workArea.rotation.y=-Math.PI/2;
+  const deskOrigin=new THREE.Vector3(3.45,0,-3.29);
+  workArea.position.copy(new THREE.Vector3(room.right-.7,0,camera.position.z).sub(
+    deskOrigin.applyAxisAngle(new THREE.Vector3(0,1,0),-Math.PI/2)
+  ));
+  const desk=new THREE.Group();workArea.add(desk);
   box(3.25,.12,1.1,3.82,1.15,-3.1,wood,.035,desk);
   for(const x of [2.4,5.24])for(const z of [-3.51,-2.69]){const leg=box(.075,1.1,.075,x,.56,z,darkWood,.01,desk);leg.rotation.z=x<3?-.07:.07;}
   box(2.84,.15,.07,3.82,.92,-3.5,darkWood,.01,desk);
   box(.72,.17,.68,4.79,.99,-3.1,wood,.02,desk);box(.16,.025,.025,4.79,.98,-2.75,brass,.006,desk);
-  const computer=new THREE.Group();scene.add(computer);
+  const computer=new THREE.Group();workArea.add(computer);
   box(1.37,.9,.065,3.45,1.91,-3.29,black,.03,computer);
   const terminal=createTerminalScreen({reducedMotion});ownedTextures.push(terminal.texture);
   picture(terminal.texture,1.28,.8,3.45,1.91,-3.246,false,computer);
@@ -253,17 +271,14 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
   cube(.075,4.04,1.25,-2.78,cream,computer,[.7,.3,1.2]);
   box(1.36,.008,.5,3.59,1.217,-2.85,mat('deskMat','#7d896c'),.035,desk);
   interact(computer,'work',[3.45,2.56,-3.1],'认识一下','ABOUT');
-  const cameraGroup=new THREE.Group();cameraGroup.position.set(4.85,1.345,-2.8);cameraGroup.rotation.y=-.2;scene.add(cameraGroup);
-  box(.42,.27,.21,0,0,0,black,.035,cameraGroup);box(.15,.07,.16,.04,.16,0,black,.018,cameraGroup);box(.42,.045,.21,0,.1,0,mat('cameraSilver','#a2a69a',.4,.4),.015,cameraGroup);
-  const lens=column(.105,.11,.16,0,0,.17,black,cameraGroup);lens.rotation.x=Math.PI/2;
-  const glass=column(.08,.08,.01,0,0,.256,mat('lens','#334f4e',.16,.55),cameraGroup);glass.rotation.x=Math.PI/2;
-  column(.035,.035,.02,.15,.14,0,brass,cameraGroup);box(.045,.035,.008,-.135,.075,.112,clay,.006,cameraGroup);
+  const cameraGroup=createPhotoCamera({body:black,trim:mat('cameraSilver','#a2a69a'),
+    glass:mat('lens','#334f4e'),shutter:brass,accent:clay});
+  cameraGroup.position.set(4.85,1.345,-2.8);cameraGroup.rotation.y=-.2;workArea.add(cameraGroup);
   interact(cameraGroup,'photos',[4.85,1.94,-2.54],'光影收藏','PHOTOS');
-  plant(5.68,1.54,-4.19,.68,scene,'cactus');
-  books(2.4,1.22,-3.36,4,.75);
-  const mug=column(.075,.065,.17,2.61,1.31,-2.77,clay);column(.06,.06,.006,2.61,1.399,-2.77,darkWood);
+  books(2.4,1.22,-3.36,4,.75,workArea);
+  column(.075,.065,.17,2.61,1.31,-2.77,clay,workArea);column(.06,.06,.006,2.61,1.399,-2.77,darkWood,workArea);
   // Desk chair.
-  const chair=new THREE.Group();chair.position.set(3.53,0,-1.59);chair.rotation.y=-.18;scene.add(chair);
+  const chair=new THREE.Group();chair.position.set(3.53,0,-1.59);chair.rotation.y=-.18;workArea.add(chair);
   box(.85,.12,.78,0,.59,0,linen,.1,chair);box(.86,.66,.09,0,.99,.36,wood,.09,chair);
   box(.74,.43,.075,0,1.02,.296,linen,.06,chair);
   for(const side of [-1,1]){
@@ -275,7 +290,7 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
   }
 
   // Right-wall bookcase, facing into the room. The entire cabinet is clickable.
-  const bookcase=new THREE.Group();bookcase.position.set(7.02,0,-2.6);bookcase.rotation.y=-Math.PI/2;scene.add(bookcase);
+  const bookcase=new THREE.Group();bookcase.position.set(room.right-.43,0,-1.35);bookcase.rotation.y=-Math.PI/2;scene.add(bookcase);
   const shelfBack=mat('shelfBack','#8c7958');
   box(2.66,3.04,.055,0,1.74,-.235,shelfBack,.01,bookcase);
   for(const x of [-1.34,1.34])box(.095,3.13,.56,x,1.72,0,wood,.018,bookcase);
@@ -303,7 +318,7 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
   },384,104);
   box(.83,.4,.16,.25,1.725,.015,cream,.008,bookcase);
   picture(bookplate,.79,.215,.25,1.81,.105,false,bookcase);
-  interact(bookcase,'culture',[6.69,3.57,-3.2],'书影音','CULTURE');
+  interact(bookcase,'culture',[room.right-.76,3.57,-1.35],'书影音','CULTURE');
   // Floating shelf and small objects connecting both corners.
   box(1.55,.08,.28,1.1,3.44,-4.22,wood,.01);books(.53,3.49,-4.23,4,.7);plant(1.58,3.48,-4.2,.62,scene,'flowers');
   const clockGroup=new THREE.Group();clockGroup.position.set(1.25,2.65,-4.29);scene.add(clockGroup);
@@ -322,11 +337,6 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
   for(const x of [-.55,.15])for(const z of [-1.05,-.35])box(.065,.58,.065,x,4.48,z,wood);
 
   scene.updateMatrixWorld(true);
-  const cabinetBounds=new THREE.Box3().setFromObject(bookcase);
-  const cabinetCorners=[];
-  for(const x of [cabinetBounds.min.x,cabinetBounds.max.x])
-    for(const y of [cabinetBounds.min.y,cabinetBounds.max.y])
-      for(const z of [cabinetBounds.min.z,cabinetBounds.max.z])cabinetCorners.push(new THREE.Vector3(x,y,z));
   function aim(atYaw){
     camera.lookAt(camera.position.x+Math.sin(atYaw)*10,1.56,camera.position.z-Math.cos(atYaw)*10);
     camera.updateMatrixWorld();
@@ -334,11 +344,7 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
   function resize(){
     renderNeeded=true;
     const w=canvas.clientWidth,h=canvas.clientHeight;
-    renderer.setSize(w,h,false);camera.aspect=w/h;camera.fov=w<760?59:49;camera.updateProjectionMatrix();
-    yawLimits=[YAW_LIMITS[0],fitRightYaw(atYaw=>{
-      aim(atYaw);
-      return Math.max(...cabinetCorners.map(point=>point.clone().project(camera).x));
-    })];
+    renderer.setSize(w,h,false);camera.aspect=w/h;camera.fov=Math.max(54,THREE.MathUtils.radToDeg(2*Math.atan(Math.tan(THREE.MathUtils.degToRad(27))/camera.aspect)));camera.updateProjectionMatrix();
     yaw=clampYaw(yaw,yawLimits);targetYaw=viewYaw(view,yawLimits);aim(yaw);
   }
   function pauseLook(){targetYaw=yaw;}
@@ -353,7 +359,7 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
     if(document.querySelector('dialog').open)return;
     if(dragging){
       const delta=event.clientX-startX;moved ||= Math.abs(delta)>6;
-      targetYaw=clampYaw(startYaw-delta/canvas.clientWidth*.95,yawLimits);return;
+      targetYaw=clampYaw(startYaw-delta/canvas.clientWidth*(yawLimits[1]-yawLimits[0]),yawLimits);return;
     }
     if(event.pointerType!=='mouse')return;
     const hit=event.target===canvas?ray(event):null;
@@ -383,8 +389,8 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
     if(dogChanged&&(!dog.active||now-lastShadowUpdate>80)){renderer.shadowMap.needsUpdate=true;lastShadowUpdate=now;}
     if(Math.abs(yaw-previousYaw)>.000001||renderNeeded||dogChanged||screenChanged){
       aim(yaw);
-      for(const {position,button} of anchors.values()){
-        const p=position.clone().project(camera);const x=(p.x*.5+.5)*canvas.clientWidth,y=(-p.y*.5+.5)*canvas.clientHeight;
+      for(const {position,parent,button} of anchors.values()){
+        const p=parent.localToWorld(position.clone()).project(camera);const x=(p.x*.5+.5)*canvas.clientWidth,y=(-p.y*.5+.5)*canvas.clientHeight;
         button.hidden=p.z>1||p.z<0||x<48||x>canvas.clientWidth-48||y<85||y>canvas.clientHeight-155;
         button.style.left=`${x}px`;button.style.top=`${y}px`;
       }

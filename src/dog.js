@@ -2,10 +2,10 @@ import * as THREE from 'three';
 import { blockGeometry, pixelMaterial } from './voxel.js';
 
 // A block-built Pomeranian; each animated part keeps its own pivot.
-export function createDog({ reducedMotion = false } = {}) {
+export function createDog({ reducedMotion = false, facingYaw = -.18 } = {}) {
   const root = new THREE.Group();root.name = 'voxel-dog';
   root.position.set(.15, 0, .55);
-  const baseYaw = -.18;root.rotation.y = baseYaw;
+  const baseYaw = facingYaw;root.rotation.y = baseYaw;
   const fur = pixelMaterial('#cf995b'), lightFur = pixelMaterial('#edce94');
   const cream = pixelMaterial('#ffebbd');
   const dark = new THREE.MeshStandardMaterial({ color: '#30281f', roughness: 1 });

@@ -10,7 +10,7 @@
   </head>
   <body>
     <div id="app">
-      <canvas id="room" aria-label="可交互的 3D 工作室。通过下方按钮探索视频、博客、个人简介和摄影。"></canvas>
+      <canvas id="room" aria-label="可交互的 3D 工作室。通过下方按钮探索视频、博客、个人简介、摄影和音乐。"></canvas>
       <div class="vignette" aria-hidden="true"></div>
       <header class="header">
         <a class="brand" href="./" aria-label="Sissel 首页"><span class="brand-icon">s.</span><span>SISSEL<span class="brand-sub">A PERSONAL SPACE</span></span></a>
@@ -26,7 +26,7 @@
         <div class="navigation"><div class="view-switch" role="group" aria-label="切换视角"><button data-view="living" class="active" aria-pressed="true"><span>◧</span> 客厅</button><button data-view="desk" aria-pressed="false"><span>▱</span> 书桌</button></div><span class="move-hint"><span>↔</span> 移动鼠标环顾 · 点击物品探索</span></div>
         <button class="quiet-button" id="motion-button" aria-pressed="false" title="暂停鼠标跟随">↔ <span>视角跟随中</span></button>
       </footer>
-      <aside class="quick-access" aria-label="直接访问内容"><button data-open="videos">01 <span>影像</span></button><button data-open="gaming">02 <span>玩乐</span></button><button data-open="work">03 <span>关于我</span></button><button data-open="photos">04 <span>摄影</span></button><button data-open="culture">05 <span>书影音</span></button></aside>
+      <aside class="quick-access" aria-label="直接访问内容"><button data-open="videos">01 <span>影像</span></button><button data-open="gaming">02 <span>玩乐</span></button><button data-open="work">03 <span>关于我</span></button><button data-open="photos">04 <span>摄影</span></button><button data-open="culture">05 <span>书影音</span></button><button data-open="music">06 <span>音乐</span></button></aside>
       <dialog id="content-dialog" aria-labelledby="panel-title"><div class="panel-top"><span id="panel-kicker"></span><button id="close-dialog" class="close-button" aria-label="关闭面板">✕</button></div><div id="panel-content"></div><div class="panel-footer"><span>THIS IS A LITTLE PIECE OF MY WORLD.</span><span>SISSEL © <span id="year"></span></span></div></dialog>
       <div id="toast" role="status"></div>
       <section id="pet-card" class="pet-card" aria-labelledby="pet-name" hidden>
