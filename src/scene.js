@@ -162,7 +162,7 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
     for(const z of [-3.58,-4.1])box(.095,.025,.09,x+outward,.893,z,black,.009,tv);
   }
   cube(.012,-.08,1.19,-3.838,mat('led','#bdca8e'),tv);
-  interact(tv,'videos',[-1.5,3.17,-3.8],'看点影像','FILMS');
+  interact(tv,'videos',[-1.5,3.17,-3.8],'视频','FILMS');
   const consoleGroup=new THREE.Group();scene.add(consoleGroup);
   box(.31,.64,.42,.65,1.19,-3.83,cream,.045,consoleGroup);box(.12,.59,.43,.65,1.19,-3.82,black,.025,consoleGroup);
   box(.018,.45,.01,.715,1.22,-3.595,mat('consoleLed','#9db9bd'),.003,consoleGroup);
@@ -172,7 +172,7 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
   box(.06,.015,.02,-.1,.06,-.04,dark,.004,controller);box(.02,.015,.06,-.1,.06,-.04,dark,.004,controller);
   for(let i=0;i<4;i++)cube(.009,.1+Math.sin(i*Math.PI/2)*.025,.06,-.025+Math.cos(i*Math.PI/2)*.025,clay,controller);
   controller.traverse(m=>{if(m.isMesh){m.userData.content='gaming';clickables.push(m);}});
-  interact(consoleGroup,'gaming',[.7,1.78,-3.46],'玩乐时间','PLAY');
+  interact(consoleGroup,'gaming',[.7,1.78,-3.46],'游戏','PLAY');
 
   // Block-built sage sofa, square cushions and a pixel-weave throw.
   const sofa=new THREE.Group();sofa.position.set(-4.3,0,-.6);sofa.scale.setScalar(.85);
@@ -229,7 +229,7 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
   const recordPlayer=createRecordPlayer({wood,darkWood,black,
     metal:mat('recordMetal','#8b937f'),label:clay,cloth:linen});
   recordPlayer.position.set(3.05,0,room.front+.55);scene.add(recordPlayer);
-  interact(recordPlayer,'music',[recordPlayer.position.x,2.13,recordPlayer.position.z+.1],'放张唱片','MUSIC');
+  interact(recordPlayer,'music',[recordPlayer.position.x,2.13,recordPlayer.position.z+.1],'音乐','MUSIC');
 
   // Gallery print and a full-height Christmas tree.
   const poster=texture((ctx,w,h)=>{
@@ -286,7 +286,7 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
   const cameraGroup=createPhotoCamera({body:black,trim:mat('cameraSilver','#a2a69a'),
     glass:mat('lens','#334f4e'),shutter:brass,accent:clay});
   cameraGroup.position.set(4.85,1.345,-2.8);cameraGroup.rotation.y=-.2;workArea.add(cameraGroup);
-  interact(cameraGroup,'photos',[4.85,1.94,-2.54],'光影收藏','PHOTOS');
+  interact(cameraGroup,'photos',[4.85,1.94,-2.54],'摄影','PHOTOS');
   books(2.4,1.22,-3.36,4,.75,workArea);
   column(.075,.065,.17,2.61,1.31,-2.77,clay,workArea);column(.06,.06,.006,2.61,1.399,-2.77,darkWood,workArea);
   // Desk chair.
@@ -330,7 +330,7 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
   },384,104);
   box(.83,.4,.16,.25,1.725,.015,cream,.008,bookcase);
   picture(bookplate,.79,.215,.25,1.81,.105,false,bookcase);
-  interact(bookcase,'culture',[room.right-.76,3.57,-1.35],'书影音','CULTURE');
+  interact(bookcase,'culture',[room.right-.76,3.57,-1.35],'故事','CULTURE');
   // Floating shelf and small objects connecting both corners.
   box(1.55,.08,.28,1.1,3.44,-4.22,wood,.01);
   const clockShelfColors=bookColors.slice();

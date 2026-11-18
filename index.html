@@ -26,7 +26,16 @@
       <footer class="footer">
         <div class="navigation"><div class="view-switch" role="group" aria-label="切换视角"><button data-view="living" class="active" aria-pressed="true"><span>◧</span> 客厅</button><button data-view="desk" aria-pressed="false"><span>▱</span> 书桌</button></div><span class="move-hint"><span>↔</span> 移动鼠标环顾 · 点击物品探索</span></div>
       </footer>
-      <dialog id="content-dialog" aria-labelledby="panel-title"><div class="panel-top"><span id="panel-kicker"></span><button id="close-dialog" class="close-button" aria-label="关闭面板">✕</button></div><div id="panel-content"></div><div class="panel-footer"><span>THIS IS A LITTLE PIECE OF MY WORLD.</span><span>SISSEL © <span id="year"></span></span></div></dialog>
+      <dialog id="content-dialog" aria-labelledby="panel-title">
+        <header class="panel-header">
+          <div>
+            <button id="panel-back" class="back-button" type="button" hidden>← 返回</button>
+            <h2 id="panel-title" tabindex="-1"></h2>
+          </div>
+          <button id="close-dialog" class="close-button" type="button" aria-label="关闭面板">×</button>
+        </header>
+        <div id="panel-content"></div>
+      </dialog>
       <div id="toast" role="status"></div>
       <span id="dog-status" class="sr-only" role="status"></span>
     </div>
