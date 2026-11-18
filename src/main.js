@@ -7,7 +7,6 @@ const content=document.querySelector('#panel-content');
 const kicker=document.querySelector('#panel-kicker');
 let room, lastFocus, currentPanel, reelCleanup=()=>{}, photoIndex=0;
 const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
-let following=!reducedMotion;
 function playWithDog(){
   if(!room)return;
   const fromDirectory=dialog.open;
@@ -114,14 +113,10 @@ document.addEventListener('keydown',e=>{
 });
 function updateView(view){
   document.querySelectorAll('[data-view]').forEach(b=>{b.classList.toggle('active',b.dataset.view===view);b.setAttribute('aria-pressed',String(b.dataset.view===view));});
-  document.querySelector('#view-number').textContent=view==='living'?'01':'02';document.querySelector('#view-title').textContent=view==='living'?'客厅':'书桌';document.querySelector('#view-subtitle').textContent=view==='living'?'THE LIVING ROOM':'THE CREATIVE CORNER';
 }
-const motionButton=document.querySelector('#motion-button');
-function updateMotion(){motionButton.setAttribute('aria-pressed',String(!following));motionButton.querySelector('span').textContent=following?'视角跟随中':'视角已固定';motionButton.title=following?'暂停鼠标跟随':'启用鼠标跟随';}
-motionButton.addEventListener('click',()=>{following=!following;room?.setFollow(following);updateMotion();});updateMotion();
 document.querySelector('#year').textContent=new Date().getFullYear();
 function ready(){const loading=document.querySelector('#loading');loading.classList.add('done');loading.setAttribute('aria-hidden','true');}
-function fallback(){document.querySelector('#fallback').hidden=false;document.querySelector('#room').style.display='none';document.querySelector('.intro').style.display='none';document.querySelector('.navigation').style.visibility='hidden';document.querySelector('#hotspots').replaceChildren();content.querySelector('[data-open="dog"]')?.remove();motionButton.hidden=true;ready();}
+function fallback(){document.querySelector('#fallback').hidden=false;document.querySelector('#room').style.display='none';document.querySelector('.intro').style.display='none';document.querySelector('.navigation').style.visibility='hidden';document.querySelector('#hotspots').replaceChildren();content.querySelector('[data-open="dog"]')?.remove();ready();}
 try {room=createRoom(document.querySelector('#room'),{onOpen:openPanel,onReady:ready,onViewChange:updateView});}catch(error){console.error('3D scene unavailable:',error);fallback();}
 document.querySelector('#room').addEventListener('webglcontextlost',event=>{event.preventDefault();room?.dispose();room=null;fallback();});
 window.addEventListener('pagehide',event=>{if(!event.persisted){reelCleanup();room?.dispose();}});

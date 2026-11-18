@@ -28,7 +28,7 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
   const camera = new THREE.PerspectiveCamera(54, 1, .1, 70);
   // Camera position is fixed; only its horizontal look direction changes.
   camera.position.set(-1.45, 2.7, 2);
-  let view = 'living', yaw = VIEWS.living, targetYaw = yaw, follow = !reducedMotion, dragging = false;
+  let view = 'living', yaw = VIEWS.living, targetYaw = yaw, dragging = false;
   let startX = 0, startYaw = 0, moved = false, lastTime = 0, raf = 0, disposed = false, renderNeeded = true;
   const raycaster = new THREE.Raycaster(), pointer = new THREE.Vector2();
   const clickables = [], anchors = new Map(), ownedTextures = [];
@@ -382,7 +382,7 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
     const rect=canvas.getBoundingClientRect();
     // The same screen position always sets the same target, regardless of the
     // element under the cursor. Moving labels cannot feed back into camera motion.
-    if(follow)targetYaw=pointerYaw(view,(event.clientX-rect.left)/rect.width*2-1,yawLimits);
+    if(!reducedMotion)targetYaw=pointerYaw(view,(event.clientX-rect.left)/rect.width*2-1,yawLimits);
     canvas.style.cursor=hit?'pointer':'grab';
   }
   function down(event){
@@ -423,7 +423,6 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
   raf=requestAnimationFrame(frame);onReady();
   return {
     setView,
-    setFollow(value){follow=value;pauseLook();},
     playDog(centerDog=false){
       if(centerDog)targetYaw=middleYaw;
       return dog.play();
