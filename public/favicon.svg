@@ -1,1 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="18" fill="#344337"/><text x="17" y="47" font-family="Georgia" font-style="italic" font-size="48" fill="#f5eddc">s.</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="4 3 26 26">
+  <defs>
+    <clipPath id="letter-s">
+      <path d="M.75 0H7.75V.75H8.5V3H6v-.5H2.5v1.25H7.75v.75H8.5V9.25H7.75V10
+        H.75V9.25H0V7h2.5v.5H6V6.25H.75V5.5H0V.75H.75z"/>
+    </clipPath>
+  </defs>
+  <g transform="translate(6.5 6) scale(2)" clip-path="url(#letter-s)">
+    <rect width="8.5" height="10" fill="#40583f"/>
+    <path fill="#70864f" d="M1 0h1v1H1z M5 1h1v1H5z M0 3h1v1H0z M3 4h1v1H3z M6 6h1v1H6z M2 8h1v1H2z"/>
+    <path fill="#567048" d="M2 0h1v1H2z M6 1h1v1H6z M7 2h1v1H7z M1 3h1v1H1z M2 4h1v1H2z
+      M6 5h1v1H6z M0 7h1v1H0z M3 8h1v1H3z M6 9h1v1H6z"/>
+    <path fill="#2c4337" d="M7 0h1v1H7z M1 2h1v1H1z M0 5h1v1H0z M5 5h1v1H5z M7 7h1v1H7z M1 9h1v1H1z M4 9h1v1H4z"/>
+  </g>
+  <rect x="25" y="23.5" width="2.5" height="2.5" fill="#728747"/>
+</svg>
