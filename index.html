@@ -29,11 +29,7 @@
       <aside class="quick-access" aria-label="直接访问内容"><button data-open="videos">01 <span>影像</span></button><button data-open="gaming">02 <span>玩乐</span></button><button data-open="work">03 <span>关于我</span></button><button data-open="photos">04 <span>摄影</span></button><button data-open="culture">05 <span>书影音</span></button><button data-open="music">06 <span>音乐</span></button></aside>
       <dialog id="content-dialog" aria-labelledby="panel-title"><div class="panel-top"><span id="panel-kicker"></span><button id="close-dialog" class="close-button" aria-label="关闭面板">✕</button></div><div id="panel-content"></div><div class="panel-footer"><span>THIS IS A LITTLE PIECE OF MY WORLD.</span><span>SISSEL © <span id="year"></span></span></div></dialog>
       <div id="toast" role="status"></div>
-      <section id="pet-card" class="pet-card" aria-labelledby="pet-name" hidden>
-        <div class="pet-card-header"><div><span class="eyebrow">THE LITTLE ROOMMATE</span><h2 id="pet-name">团子 <span>· 博美犬</span></h2></div><button id="close-pet" class="close-button" aria-label="关闭团子的互动面板">✕</button></div>
-        <p id="pet-status" role="status" aria-live="polite">团子摇着尾巴，等你打个招呼。</p>
-        <div class="pet-actions" role="group" aria-label="和团子互动"><button data-pet-action="pet">♡ 摸摸头</button><button data-pet-action="paw">握个爪</button><button data-pet-action="spin">转个圈</button></div>
-      </section>
+      <span id="dog-status" class="sr-only" role="status"></span>
     </div>
     <script type="module" src="/src/main.js"></script>
   </body>

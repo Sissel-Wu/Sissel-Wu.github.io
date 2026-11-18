@@ -4,8 +4,10 @@ import { blockGeometry, steppedGeometry, pixelMaterial } from './voxel.js';
 import { VIEWS, YAW_LIMITS, clampYaw, viewYaw, pointerYaw, smoothYaw } from './navigation.js';
 import { createDog } from './dog.js';
 import { createPlant } from './plant.js';
-import { createVideoScreen, createTerminalScreen } from './screens.js';
-import { createWindowFrame, createWindowWallSections, createPhotoCamera, createRecordPlayer } from './fixtures.js';
+import { createMazeGameCover, createPlatformGameCover, createVideoScreen, createTerminalScreen } from './screens.js';
+import { createWindowFrame, createWindowWallSections, createPhotoCamera, createGameCases, createRecordPlayer } from './fixtures.js';
+
+const bookColors=['#75816a','#c9b58c','#986b50','#d8cfb6','#788b8b','#5a6250'];
 
 export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -76,7 +78,7 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
     group.traverse(mesh=>{if(mesh.isMesh){mesh.userData.content=id;clickables.push(mesh);}});
     const button=document.createElement('button');button.className='hotspot';button.dataset.open=id;
     button.innerHTML=`<span class="hotspot-dot">+</span><span>${label}</span><em>${english}</em>`;
-    button.setAttribute('aria-label',id==='dog'?'和博美犬团子互动':`打开${label}`);hotspotRoot.append(button);
+    button.setAttribute('aria-label',id==='dog'?'和博美犬导弹玩一下':`打开${label}`);hotspotRoot.append(button);
     anchors.set(id,{position:new THREE.Vector3(...position),parent:group.parent,button});
   }
   function plant(x,y,z,size=1,parent=scene,variant='broadleaf') {
@@ -88,9 +90,14 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
     parent.add(model);
     return model;
   }
-  function books(x,y,z,count=5,scale=1,parent=scene) {
-    const colors=['#75816a','#c9b58c','#986b50','#d8cfb6','#788b8b','#5a6250'];
-    for(let i=0;i<count;i++) {const h=(.36+(i%3)*.07)*scale;const b=box(.1*scale,h,.3*scale,x+i*.115*scale,y+h/2,z,mat('book'+i%6,colors[i%6]),.008,parent);b.rotation.z=i===0?-.13:0;box(.104*scale,.014*scale,.006,x+i*.115*scale,y+h*.22,z+.154*scale,cream,0,parent);}
+  function books(x,y,z,count=5,scale=1,parent=scene,colors=bookColors) {
+    for(let i=0;i<count;i++) {
+      const h=(.36+(i%3)*.07)*scale, offset=x+i*.115*scale;
+      const color=colors[i%colors.length];
+      const b=box(.1*scale,h,.3*scale,offset,y+h/2,z,mat('book'+color,color),.008,parent);
+      b.rotation.z=i===0?-.13:0;
+      box(.104*scale,.014*scale,.006,offset,y+h*.22,z+.154*scale,cream,0,parent);
+    }
   }
 
   scene.add(new THREE.HemisphereLight('#fff5de','#8e957a',2.1));
@@ -129,16 +136,21 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
   }
   plant(1.13,1.54,.31,.68,windowWall,'cactus');
 
-  // Living area: low oak media console, screen, books, and a game console.
+  // Living area: low oak media cabinet with an open bay for games.
   const media=new THREE.Group();scene.add(media);
-  box(4.4,.56,.66,-1.25,.51,-3.85,wood,.035,media);
+  box(4.4,.08,.66,-1.25,.27,-3.85,wood,.01,media);
+  box(2.75,.47,.66,-2.075,.545,-3.85,wood,.01,media);
+  box(.08,.47,.66,.91,.545,-3.85,wood,.01,media);
+  box(1.57,.47,.08,.085,.545,-4.14,darkWood,.01,media);
   box(4.5,.1,.76,-1.25,.83,-3.85,wood,.025,media);
   for(const x of [-3.15,.65])for(const z of [-4.05,-3.62])column(.035,.045,.23,x,.12,z,darkWood,media);
-  for(let i=0;i<31;i++)box(.055,.4,.025,-3.33+i*.072,.51,-3.502,darkWood,.005,media);
-  box(1.68,.41,.02,.05,.51,-3.505,mat('shelfShadow','#6d5539'));
-  box(.055,.47,.58,-.68,.51,-3.81,wood);
-  books(-.42,.31,-3.6,5,.72);
-  box(.45,.08,.37,.51,.35,-3.65,cream,.01);box(.38,.04,.34,.53,.42,-3.65,green,.01);
+  for(let i=0;i<36;i++)box(.055,.4,.025,-3.33+i*.072,.51,-3.509,darkWood,.005,media);
+  const gameCovers=[createMazeGameCover(),createPlatformGameCover()];ownedTextures.push(...gameCovers);
+  const gameCases=createGameCases({
+    plastic:mat('casePlastic','#303a43'), covers:gameCovers, label:cream,
+    sleeves:[mat('caseOchre','#b78950'),mat('caseRust','#a75845'),mat('caseTeal','#4a8084')],
+  });
+  gameCases.position.set(.085,.31,-3.52);media.add(gameCases);
   const tv=new THREE.Group();scene.add(tv);
   box(3.12,1.78,.12,-1.45,2.04,-3.91,black,.045,tv);
   const screen=createVideoScreen();ownedTextures.push(screen);
@@ -212,7 +224,7 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
     const mesh=new THREE.Mesh(mergeGeometries(parts),ballColors[i]);
     parts.forEach(part=>part.dispose());mesh.castShadow=mesh.receiveShadow=true;ball.add(mesh);
   });
-  interact(dog.root,'dog',[.15,1.65,.55],'团子 · 摸摸头','HELLO');
+  interact(dog.root,'dog',[.15,1.65,.55],'导弹','HELLO');
 
   const recordPlayer=createRecordPlayer({wood,darkWood,black,
     metal:mat('recordMetal','#8b937f'),label:clay,cloth:linen});
@@ -320,7 +332,11 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
   picture(bookplate,.79,.215,.25,1.81,.105,false,bookcase);
   interact(bookcase,'culture',[room.right-.76,3.57,-1.35],'书影音','CULTURE');
   // Floating shelf and small objects connecting both corners.
-  box(1.55,.08,.28,1.1,3.44,-4.22,wood,.01);books(.53,3.49,-4.23,4,.7);plant(1.58,3.48,-4.2,.62,scene,'flowers');
+  box(1.55,.08,.28,1.1,3.44,-4.22,wood,.01);
+  const clockShelfColors=bookColors.slice();
+  clockShelfColors[3]='#713d57';
+  books(.53,3.48,-4.23,6,.7,scene,clockShelfColors);
+  plant(1.58,3.48,-4.2,.62,scene,'flowers');
   const clockGroup=new THREE.Group();clockGroup.position.set(1.25,2.65,-4.29);scene.add(clockGroup);
   const clockRim=mat('clockRim','#324e53'),clockFace=mat('clockFace','#f0dfb8');
   box(.54,.54,.07,0,0,0,clockRim,0,clockGroup);
@@ -408,7 +424,10 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
   return {
     setView,
     setFollow(value){follow=value;pauseLook();},
-    playDog(action){dog.play(action);renderNeeded=true;renderer.shadowMap.needsUpdate=true;},
+    playDog(centerDog=false){
+      if(centerDog)targetYaw=middleYaw;
+      return dog.play();
+    },
     dispose(){
       disposed=true;cancelAnimationFrame(raf);window.removeEventListener('resize',resize);
       surface.removeEventListener('pointermove',pointerMove);

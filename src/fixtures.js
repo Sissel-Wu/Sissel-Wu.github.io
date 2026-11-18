@@ -58,6 +58,30 @@ export function createPhotoCamera({body,trim,glass,shutter,accent}) {
   return camera;
 }
 
+export function createGameCases({plastic, covers, label, sleeves}) {
+  const collection=new THREE.Group();collection.name='game-cases';
+  const width=.34, height=.36, thickness=.064;
+  const front=-.118;
+  for(const [i,cover] of covers.entries()){
+    const x=-.51+i*.41,y=height/2;
+    block(collection,'upright-game-case',[width,height,thickness],[x,y,front-thickness/2],plastic);
+    const coverMaterial=new THREE.MeshStandardMaterial({map:cover,roughness:.8});
+    addMesh(collection,'game-cover',new THREE.PlaneGeometry(width-.028,height-.026),coverMaterial,
+      [x,y,front+.001]);
+  }
+
+  for(const [i,sleeve] of sleeves.entries()){
+    const gameCase=new THREE.Group();gameCase.name='game-case';
+    gameCase.position.set(.38+i*.009,thickness*(i+.5),front-height/2+i*.006);
+    collection.add(gameCase);
+    block(gameCase,'case-shell',[width,thickness,height],[0,0,0],plastic);
+    block(gameCase,'case-sleeve',[width-.026,thickness-.024,.006],[0,0,height/2-.002],sleeve);
+    block(gameCase,'spine-mark',[.035,.016,.003],[-.113,0,height/2+.002],label);
+    block(gameCase,'spine-title',[.106,.01,.003],[-.007,0,height/2+.002],label);
+  }
+  return collection;
+}
+
 export function createRecordPlayer({wood,darkWood,black,metal,label,cloth}) {
   const player=new THREE.Group();player.name='record-player';
   // A small record cabinet, with a speaker and upright sleeves below the deck.

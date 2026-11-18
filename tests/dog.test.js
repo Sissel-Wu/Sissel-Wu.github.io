@@ -31,6 +31,20 @@ test('reduced motion keeps the dog still while interaction feedback remains avai
   dispose(dog.root);
 });
 
+test('an interaction with no specified action randomly selects from all three poses', t=>{
+  const dog=createDog();
+  const random=t.mock.method(Math,'random');
+  for(const [sample,action] of [[0,'pet'],[.5,'paw'],[.99,'spin']]){
+    random.mock.mockImplementation(()=>sample);
+    dog.play(action,0);dog.update(1000);
+    const expected=pose(dog.root);
+    assert.equal(dog.play(undefined,2000),action);
+    dog.update(3000);
+    assert.deepEqual(pose(dog.root),expected);
+  }
+  dispose(dog.root);
+});
+
 test('a dog facing the viewer at the middle of the room keeps that heading after interactions',()=>{
   const facingYaw=-Math.PI/4,dog=createDog({facingYaw});
   for(const action of ['pet','paw','spin']){

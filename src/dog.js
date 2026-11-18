@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { blockGeometry, pixelMaterial } from './voxel.js';
 
+const actions = ['pet', 'paw', 'spin'];
+
 // A block-built Pomeranian; each animated part keeps its own pivot.
 export function createDog({ reducedMotion = false, facingYaw = -.18 } = {}) {
   const root = new THREE.Group();root.name = 'voxel-dog';
@@ -58,8 +60,9 @@ export function createDog({ reducedMotion = false, facingYaw = -.18 } = {}) {
   return {
     root,
     get active(){return action!==null;},
-    play(next, now = performance.now()) {
+    play(next = actions[Math.floor(Math.random()*actions.length)], now = performance.now()) {
       resetPose();action=reducedMotion?null:next;started=now;finishing=true;
+      return next;
     },
     update(now) {
       if (!action) { if(finishing){finishing=false;resetPose();return true;} return false; }

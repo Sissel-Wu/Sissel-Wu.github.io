@@ -29,6 +29,59 @@ function screenCanvas(width,height) {
   return {canvas,ctx:canvas.getContext('2d'),texture};
 }
 
+export function createMazeGameCover() {
+  const {ctx,texture}=screenCanvas(56,60);
+  const background='#172342';
+  ctx.fillStyle=background;ctx.fillRect(0,0,56,60);
+  ctx.translate(2,0);
+  lettering(ctx,'MAZE',11,5,'#f6db7a',2);
+  lettering(ctx,'MUNCH',7,17,'#f5b756',2);
+
+  ctx.fillStyle='#4b72b6';
+  [[3,30,18,2],[3,30,2,8],[3,48,2,8],[3,54,46,2],
+    [32,30,17,2],[47,30,2,7],[47,48,2,8],[23,49,9,2]].forEach(rect=>ctx.fillRect(...rect));
+  ctx.fillStyle='#ecd598';
+  for(const x of [24,29,34])ctx.fillRect(x,41,2,2);
+
+  ctx.fillStyle='#dc9553';ctx.fillRect(7,37,14,12);ctx.fillRect(9,48,4,3);ctx.fillRect(16,48,4,3);
+  ctx.fillStyle='#f4c65e';ctx.fillRect(9,34,9,14);ctx.fillRect(7,36,14,11);ctx.fillRect(6,38,16,7);
+  ctx.fillStyle=background;
+  ctx.fillRect(18,39,5,1);ctx.fillRect(14,40,9,5);ctx.fillRect(17,45,6,1);
+  ctx.fillRect(11,36,2,2);ctx.fillRect(15,36,2,2);
+  ctx.fillStyle='#f7e7bd';ctx.fillRect(16,39,2,2);
+  ctx.fillStyle='#bf698d';ctx.fillRect(39,37,6,10);ctx.fillRect(37,40,10,4);
+  ctx.fillStyle='#f3ded1';ctx.fillRect(41,39,2,3);
+  return texture;
+}
+
+export function createPlatformGameCover() {
+  const {ctx,texture}=screenCanvas(56,60);
+  ctx.fillStyle='#3d73a4';ctx.fillRect(0,0,56,60);
+  ctx.fillStyle='#7fb2cd';ctx.fillRect(0,28,56,32);
+  lettering(ctx,'SKY',17,5,'#f9e5a4',2);
+  lettering(ctx,'HOP',17,17,'#f9d071',2);
+
+  ctx.fillStyle='#dae8dc';
+  [[4,34,12,2],[7,32,6,2],[42,31,9,2],[45,29,4,2]].forEach(rect=>ctx.fillRect(...rect));
+  ctx.fillStyle='#57977d';
+  [[0,51,56,9],[8,48,12,3],[11,45,6,3],[32,52,15,8]].forEach(rect=>ctx.fillRect(...rect));
+  ctx.fillStyle='#ae6346';ctx.fillRect(0,53,20,7);ctx.fillRect(39,43,17,7);
+  ctx.fillStyle='#e2a269';ctx.fillRect(0,53,20,2);ctx.fillRect(39,43,17,2);
+  ctx.fillStyle='#744b3c';
+  for(const x of [6,13])ctx.fillRect(x,55,1,5);
+  for(const x of [44,50])ctx.fillRect(x,45,1,5);
+  ctx.fillStyle='#f7cc65';ctx.fillRect(37,33,3,5);ctx.fillRect(44,36,3,5);
+
+  // A jumping hare with a scarf, above the two brick platforms.
+  ctx.fillStyle='#f6e3bb';
+  ctx.fillRect(22,30,2,7);ctx.fillRect(26,31,2,6);ctx.fillRect(21,35,10,7);ctx.fillRect(30,38,3,3);
+  ctx.fillStyle='#39455e';ctx.fillRect(26,37,2,2);
+  ctx.fillStyle='#d36d54';ctx.fillRect(20,41,11,2);ctx.fillRect(17,42,5,2);
+  ctx.fillStyle='#30726f';ctx.fillRect(22,43,8,5);ctx.fillRect(27,45,5,3);
+  ctx.fillStyle='#f6e3bb';ctx.fillRect(19,48,6,2);ctx.fillRect(30,47,5,2);
+  return texture;
+}
+
 export function createVideoScreen() {
   const {ctx,texture}=screenCanvas(128,72);
   ctx.fillStyle='#203640';ctx.fillRect(0,0,128,72);
