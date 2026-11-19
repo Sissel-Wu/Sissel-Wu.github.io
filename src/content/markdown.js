@@ -1,22 +1,37 @@
+const DUMMY_BASE = 'https://local.invalid/base/';
+const CONTROL_CHAR_RE = /[\u0000-\u001F\u007F]/;
+
 export function escapeHTML(value) {
   return String(value ?? '').replace(/[&<>"']/g, (ch) => (
     { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]
   ));
 }
 
-export function sanitizeUrl(url, { allowDataImage = false } = {}) {
-  const trimmed = String(url ?? '').trim();
-  if (!trimmed) return '';
-  if (trimmed.startsWith('#') || trimmed.startsWith('/') || trimmed.startsWith('./') || trimmed.startsWith('../')) {
-    return trimmed;
+export function sanitizeUrl(url, { allowDataImage = false, allowMailto = true, allowRelative = true } = {}) {
+  const raw = String(url ?? '');
+  if (!raw || CONTROL_CHAR_RE.test(raw)) return '';
+  const trimmed = raw.trim();
+  if (!trimmed || trimmed.includes('\\')) return '';
+  if (trimmed.startsWith('#')) return trimmed;
+
+  if (/^data:/i.test(trimmed)) {
+    if (!allowDataImage) return '';
+    return /^data:image\/(?:png|jpeg|jpg|gif|webp|avif|svg\+xml);/i.test(trimmed) ? trimmed : '';
   }
-  const schemeMatch = trimmed.match(/^([a-zA-Z][a-zA-Z\d+.-]*):/);
-  if (!schemeMatch) return trimmed;
-  const scheme = schemeMatch[1].toLowerCase();
-  if (scheme === 'http' || scheme === 'https' || scheme === 'mailto') return trimmed;
-  if (allowDataImage && scheme === 'data' && /^data:image\/(?:png|jpeg|jpg|gif|webp|avif|svg\+xml);/i.test(trimmed)) {
-    return trimmed;
+
+  let parsed;
+  try {
+    parsed = new URL(trimmed, DUMMY_BASE);
+  } catch {
+    return '';
   }
+
+  const isExplicitScheme = /^[a-zA-Z][a-zA-Z\d+.-]*:/.test(trimmed);
+  const isProtocolRelative = trimmed.startsWith('//');
+  if (!isExplicitScheme && !isProtocolRelative && !allowRelative) return '';
+
+  if (parsed.protocol === 'http:' || parsed.protocol === 'https:') return trimmed;
+  if (allowMailto && parsed.protocol === 'mailto:') return trimmed;
   return '';
 }
 
@@ -32,6 +47,111 @@ export function extractMarkdownTitle(markdown) {
   };
 }
 
+function parseLinkAt(text, startIndex) {
+  const isImage = text[startIndex] === '!';
+  const bracketStart = isImage ? startIndex + 1 : startIndex;
+  if (text[bracketStart] !== '[') return null;
+
+  let i = bracketStart + 1;
+  let bracketDepth = 1;
+  while (i < text.length && bracketDepth > 0) {
+    if (text[i] === '\\' && i + 1 < text.length) {
+      i += 2;
+      continue;
+    }
+    if (text[i] === '[') bracketDepth += 1;
+    else if (text[i] === ']') bracketDepth -= 1;
+    if (bracketDepth > 0) i += 1;
+  }
+  if (bracketDepth !== 0) return null;
+
+  const label = text.slice(bracketStart + 1, i);
+  if (text[i + 1] !== '(') return null;
+
+  let j = i + 2;
+  while (j < text.length && (text[j] === ' ' || text[j] === '\t')) j += 1;
+  if (j >= text.length) return null;
+
+  let destination = '';
+  if (text[j] === '<') {
+    j += 1;
+    const destStart = j;
+    while (j < text.length && text[j] !== '>' && text[j] !== '\n') {
+      if (text[j] === '\\' && j + 1 < text.length) {
+        j += 2;
+        continue;
+      }
+      j += 1;
+    }
+    if (text[j] !== '>') return null;
+    destination = text.slice(destStart, j);
+    j += 1;
+  } else {
+    const destStart = j;
+    let parenDepth = 0;
+    while (j < text.length) {
+      const ch = text[j];
+      if (ch === '\\' && j + 1 < text.length) {
+        j += 2;
+        continue;
+      }
+      if (ch === ' ' || ch === '\t' || ch === '\n') break;
+      if (ch === '(') {
+        parenDepth += 1;
+      } else if (ch === ')') {
+        if (parenDepth === 0) break;
+        parenDepth -= 1;
+      }
+      j += 1;
+    }
+    if (parenDepth !== 0) return null;
+    destination = text.slice(destStart, j);
+  }
+
+  while (j < text.length && (text[j] === ' ' || text[j] === '\t')) j += 1;
+
+  let title = '';
+  if (text[j] === '"' || text[j] === "'") {
+    const quote = text[j];
+    j += 1;
+    const titleStart = j;
+    while (j < text.length && text[j] !== quote) {
+      if (text[j] === '\\' && j + 1 < text.length) {
+        j += 2;
+        continue;
+      }
+      j += 1;
+    }
+    if (text[j] !== quote) return null;
+    title = text.slice(titleStart, j);
+    j += 1;
+    while (j < text.length && (text[j] === ' ' || text[j] === '\t')) j += 1;
+  }
+
+  if (text[j] !== ')') return null;
+  if (!destination) return null;
+
+  return { isImage, label, destination, title, endIndex: j + 1 };
+}
+
+function replaceLinksAndImages(text, handler) {
+  let out = '';
+  let i = 0;
+  while (i < text.length) {
+    if (text[i] === '[' || (text[i] === '!' && text[i + 1] === '[')) {
+      const parsed = parseLinkAt(text, i);
+      if (parsed) {
+        out += handler(parsed);
+        i = parsed.endIndex;
+        continue;
+      }
+    }
+    out += text[i];
+    i += 1;
+  }
+  return out;
+}
+
 export function markdownToPlainParagraphs(markdown) {
   const blocks = String(markdown ?? '')
     .replace(/^\uFEFF/, '')
@@ -39,19 +159,20 @@ export function markdownToPlainParagraphs(markdown) {
     .trim()
     .split(/\n{2,}/);
   return blocks
-    .map((block) => block
-      .replace(/^```[\s\S]*?```$/gm, '')
-      .replace(/^#{1,6}\s+/gm, '')
-      .replace(/^>\s?/gm, '')
-      .replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1')
-      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .map((block) => replaceLinksAndImages(
+      block
+        .replace(/^```[\s\S]*?```$/gm, '')
+        .replace(/^#{1,6}\s+/gm, '')
+        .replace(/^>\s?/gm, ''),
+      ({ label }) => label,
+    )
       .replace(/(\*\*|__|~~|`|\*)/g, '')
       .replace(/\s*\n\s*/g, ' ')
       .trim())
     .filter(Boolean);
 }
 
-function renderInline(text, { resolveAsset } = {}) {
+function renderInline(text, { resolveAsset, resolveLinkAsset } = {}) {
   const tokens = [];
   const stash = (html) => {
     const key = `\u0000${tokens.length}\u0000`;
@@ -62,17 +183,18 @@ function renderInline(text, { resolveAsset } = {}) {
 
   let out = String(text ?? '');
   out = out.replace(/`([^`\n]+)`/g, (_, code) => stash(`<code>${escapeHTML(code)}</code>`));
-  out = out.replace(/!\[([^\]]*)\]\((?:<([^>]+)>|([^)\s]+))(?:\s+"([^"]*)")?\)/g, (_, alt, angleSrc, plainSrc, title) => {
-    const rawSrc = angleSrc ?? plainSrc;
-    const resolved = resolveAsset ? resolveAsset(rawSrc) : rawSrc;
-    const safeSrc = sanitizeUrl(resolved, { allowDataImage: true });
-    if (!safeSrc) return escapeHTML(alt);
-    const titleAttr = title ? ` title="${escapeHTML(title)}"` : '';
-    return stash(`<img src="${escapeHTML(safeSrc)}" alt="${escapeHTML(alt)}"${titleAttr} loading="lazy">`);
-  });
-  out = out.replace(/\[([^\]]+)\]\((?:<([^>]+)>|([^)\s]+))(?:\s+"([^"]*)")?\)/g, (_, label, angleHref, plainHref, title) => {
-    const rawHref = angleHref ?? plainHref;
-    const safeHref = sanitizeUrl(rawHref);
+  out = replaceLinksAndImages(out, ({ isImage, label, destination, title }) => {
+    if (isImage) {
+      const resolved = resolveAsset ? resolveAsset(destination) : destination;
+      const safeSrc = sanitizeUrl(resolved, { allowDataImage: true, allowMailto: false });
+      if (!safeSrc) return escapeHTML(label);
+      const titleAttr = title ? ` title="${escapeHTML(title)}"` : '';
+      return stash(`<img src="${escapeHTML(safeSrc)}" alt="${escapeHTML(label)}"${titleAttr} loading="lazy">`);
+    }
+
+    const linkResolver = resolveLinkAsset ?? resolveAsset;
+    const resolved = linkResolver ? linkResolver(destination) : destination;
+    const safeHref = sanitizeUrl(resolved, { allowDataImage: false, allowMailto: true });
     if (!safeHref) return restore(escapeHTML(label));
     const isExternal = /^https?:\/\//i.test(safeHref);
     const targetAttr = isExternal ? ' target="_blank" rel="noreferrer"' : '';

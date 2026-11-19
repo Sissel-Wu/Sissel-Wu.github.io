@@ -1,7 +1,7 @@
 import './style.css';
 import { createRoom } from './scene.js';
 import { profile, posts, videos, photoAlbums } from './data.js';
-import { escapeHTML } from './content/markdown.js';
+import { escapeHTML, sanitizeUrl } from './content/markdown.js';
 
 const dialog=document.querySelector('#content-dialog');
 const content=document.querySelector('#panel-content');
@@ -43,7 +43,8 @@ function renderPanel(type){
     return;
   }
   if(type==='videos')content.innerHTML=videos.map(video=>{
-    const url=video.url??`https://search.bilibili.com/all?keyword=${encodeURIComponent(video.title)}`;
+    const safeUrl=video.url?sanitizeUrl(video.url,{allowDataImage:false,allowMailto:false}):'';
+    const url=safeUrl||`https://search.bilibili.com/all?keyword=${encodeURIComponent(video.title)}`;
     const thumbnail=video.image
       ? `<span class="video-thumbnail"><img src="${escapeHTML(video.image)}" alt="" loading="lazy"></span>`
       : '';

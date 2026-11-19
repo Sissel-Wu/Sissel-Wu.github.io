@@ -34,7 +34,7 @@ category: work
 
 - `category` 默认为 `work`（显示在「电脑 → 文章」）；也可按需设为 `gaming` 或 `culture`。
 - 如文章需要配图，可建一个文件夹 `content/articles/my-post/`，放入 `index.md` 和图片，在正文里直接写 `![说明](./photo.jpg)`。
-- 设为 `draft: true` 或文件名以 `_` 开头时不会发布到页面上。
+- 设为 `draft: true` 或文件名以 `_` 开头时不会发布，也不会被打进生产构建产物 `dist/`（仅由草稿引用的配图同样不会被打包）。
 - 默认按 `date` 从新到旧排序；如需手动置顶，可添加数字 `order`（越小越靠前）。
 
 ## 3. 新增相册或照片

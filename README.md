@@ -46,8 +46,8 @@ npm run preview
 | `content/photos/` | 相册目录：每个子文件夹即一个相册，可选 `album.yaml` 自定义标题与顺序 |
 | `content/videos/videos.yaml` | 视频列表、封面与链接 |
 | `content/music/` | 音乐试听文件与 `tracks.yaml` 曲目配置 |
-| `src/data.js` | 通过 Vite `import.meta.glob` 汇总 `content/` 内容 |
-| `src/content/` | YAML frontmatter 解析、Markdown 渲染与内容加载逻辑 |
+| `src/data.js` | 从构建期虚拟模块导出 `profile`、`posts`、`photoAlbums`、`videos`、`musicTracks` |
+| `src/content/` | 构建期 Vite 插件、YAML frontmatter 解析、Markdown 渲染与内容校验 |
 | `src/scene.js` | 房间、家具、材质、灯光、拾取与相机 |
 | `src/navigation.js` | 相机角度范围、90° 视角切换、鼠标移动判定与平滑函数 |
 | `src/dog.js` | 博美犬模型、朝向与互动动作 |

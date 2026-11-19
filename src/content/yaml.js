@@ -2,7 +2,12 @@ function normalizeNewlines(text) {
   return String(text ?? '').replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
 }
 
-function stripComment(text) {
+function yamlError(filename, lineNumber, message) {
+  const location = filename ? `${filename}:${lineNumber}` : `line ${lineNumber}`;
+  return new Error(`YAML parse error at ${location}: ${message}`);
+}
+
+function stripComment(text, filename, lineNumber) {
   let quote = null;
   for (let i = 0; i < text.length; i += 1) {
     const ch = text[i];
@@ -16,6 +21,7 @@ function stripComment(text) {
     }
     if (quote === '"') {
       if (ch === '\\') {
+        if (i + 1 >= text.length) throw yamlError(filename, lineNumber, 'Unterminated escape sequence');
         i += 1;
       } else if (ch === '"') {
         quote = null;
@@ -27,6 +33,9 @@ function stripComment(text) {
     } else if (ch === '#' && (i === 0 || /\s/.test(text[i - 1]))) {
       return text.slice(0, i).trimEnd();
     }
+  }
+  if (quote !== null) {
+    throw yamlError(filename, lineNumber, `Unclosed ${quote === '"' ? 'double' : 'single'}-quoted string`);
   }
   return text.trimEnd();
 }
@@ -81,7 +90,7 @@ function splitInlineItems(inner) {
   return items;
 }
 
-function parseScalar(raw) {
+function parseScalar(raw, filename, lineNumber) {
   const value = raw.trim();
   if (value === '') return '';
   if (
@@ -90,14 +99,17 @@ function parseScalar(raw) {
   ) {
     return unquote(value);
   }
-  if (value.startsWith('[') && value.endsWith(']')) {
+  if (value.startsWith('[')) {
+    if (!value.endsWith(']')) {
+      throw yamlError(filename, lineNumber, 'Unclosed inline sequence "["');
+    }
     const inner = value.slice(1, -1).trim();
     if (!inner) return [];
-    return splitInlineItems(inner).map(parseScalar);
+    return splitInlineItems(inner).map((item) => parseScalar(item, filename, lineNumber));
   }
-  if (value === 'true') return true;
-  if (value === 'false') return false;
-  if (value === 'null' || value === '~') return null;
+  if (value === 'true' || value === 'True' || value === 'TRUE') return true;
+  if (value === 'false' || value === 'False' || value === 'FALSE') return false;
+  if (value === 'null' || value === 'Null' || value === 'NULL' || value === '~') return null;
   if (/^-?(?:0|[1-9]\d*)(?:\.\d+)?$/.test(value)) return Number(value);
   return value;
 }
@@ -142,12 +154,24 @@ function isBlockScalarHeader(value) {
   return /^[|>][+-]?$/.test(value);
 }
 
-function prepareLines(text) {
-  return normalizeNewlines(text).split('\n').map((raw) => {
+function isDocumentStart(line) {
+  return line.indent === 0 && (line.content === '---' || line.content.startsWith('--- '));
+}
+
+function isDocumentEnd(line) {
+  return line.indent === 0 && line.content === '...';
+}
+
+function prepareLines(text, filename, lineOffset = 0) {
+  return normalizeNewlines(text).split('\n').map((raw, idx) => {
+    const lineNumber = idx + 1 + lineOffset;
+    if (/^\t/.test(raw)) {
+      throw yamlError(filename, lineNumber, 'Tab indentation is not allowed in YAML; use spaces');
+    }
     const indent = raw.match(/^ */)[0].length;
     const trimmed = raw.slice(indent);
-    const content = stripComment(trimmed);
-    return { raw, indent, content };
+    const content = stripComment(trimmed, filename, lineNumber);
+    return { raw, indent, content, lineNumber };
   });
 }
 
@@ -207,28 +231,37 @@ function parseBlockScalar(lines, startIndex, parentIndent, header) {
   return [text, i];
 }
 
-function parseMappingInto(obj, lines, startIndex, baseIndent) {
+function parseMappingInto(obj, lines, startIndex, baseIndent, filename) {
   let i = startIndex;
   while (true) {
     i = nextMeaningful(lines, i);
-    if (i >= lines.length) break;
-    const { indent, content } = lines[i];
+    if (i >= lines.length || isDocumentEnd(lines[i])) break;
+    const { indent, content, lineNumber } = lines[i];
     if (indent < baseIndent) break;
-    if (indent > baseIndent) break;
+    if (indent > baseIndent) {
+      throw yamlError(filename, lineNumber, `Unexpected indentation (expected ${baseIndent} spaces, got ${indent})`);
+    }
     if (isSequenceLine(content)) break;
 
     const entry = splitKeyValue(content);
-    if (!entry) break;
+    if (!entry) {
+      throw yamlError(filename, lineNumber, `Expected "key: value" entry, got "${content}"`);
+    }
     i += 1;
 
     if (entry.value === '') {
       const next = nextMeaningful(lines, i);
-      if (next < lines.length && lines[next].indent > baseIndent) {
-        const [nested, nextAfter] = parseBlock(lines, next, baseIndent + 1);
+      if (next < lines.length && !isDocumentEnd(lines[next]) && lines[next].indent > baseIndent) {
+        const [nested, nextAfter] = parseBlock(lines, next, baseIndent + 1, filename);
         obj[entry.key] = nested;
         i = nextAfter;
-      } else if (next < lines.length && lines[next].indent === baseIndent && isSequenceLine(lines[next].content)) {
-        const [seq, nextAfter] = parseSequence(lines, next, baseIndent);
+      } else if (
+        next < lines.length &&
+        !isDocumentEnd(lines[next]) &&
+        lines[next].indent === baseIndent &&
+        isSequenceLine(lines[next].content)
+      ) {
+        const [seq, nextAfter] = parseSequence(lines, next, baseIndent, filename);
         obj[entry.key] = seq;
         i = nextAfter;
       } else {
@@ -239,21 +272,25 @@ function parseMappingInto(obj, lines, startIndex, baseIndent) {
       obj[entry.key] = text;
       i = nextAfter;
     } else {
-      obj[entry.key] = parseScalar(entry.value);
+      obj[entry.key] = parseScalar(entry.value, filename, lineNumber);
     }
   }
   return [obj, i];
 }
 
-function parseSequence(lines, startIndex, baseIndent) {
+function parseSequence(lines, startIndex, baseIndent, filename) {
   const items = [];
   let i = startIndex;
 
   while (true) {
     i = nextMeaningful(lines, i);
-    if (i >= lines.length) break;
-    const { indent, content } = lines[i];
-    if (indent !== baseIndent || !isSequenceLine(content)) break;
+    if (i >= lines.length || isDocumentEnd(lines[i])) break;
+    const { indent, content, lineNumber } = lines[i];
+    if (indent < baseIndent) break;
+    if (indent > baseIndent) {
+      throw yamlError(filename, lineNumber, `Unexpected indentation inside sequence (expected ${baseIndent}, got ${indent})`);
+    }
+    if (!isSequenceLine(content)) break;
 
     const rest = content.slice(1);
     const afterDash = rest.trimStart();
@@ -262,8 +299,8 @@ function parseSequence(lines, startIndex, baseIndent) {
 
     if (afterDash === '') {
       const next = nextMeaningful(lines, i);
-      if (next < lines.length && lines[next].indent > baseIndent) {
-        const [nested, nextAfter] = parseBlock(lines, next, baseIndent + 1);
+      if (next < lines.length && !isDocumentEnd(lines[next]) && lines[next].indent > baseIndent) {
+        const [nested, nextAfter] = parseBlock(lines, next, baseIndent + 1, filename);
         items.push(nested);
         i = nextAfter;
       } else {
@@ -284,12 +321,17 @@ function parseSequence(lines, startIndex, baseIndent) {
       const obj = {};
       if (entry.value === '') {
         const next = nextMeaningful(lines, i);
-        if (next < lines.length && lines[next].indent > itemIndent) {
-          const [nested, nextAfter] = parseBlock(lines, next, itemIndent + 1);
+        if (next < lines.length && !isDocumentEnd(lines[next]) && lines[next].indent > itemIndent) {
+          const [nested, nextAfter] = parseBlock(lines, next, itemIndent + 1, filename);
           obj[entry.key] = nested;
           i = nextAfter;
-        } else if (next < lines.length && lines[next].indent === itemIndent && isSequenceLine(lines[next].content)) {
-          const [seq, nextAfter] = parseSequence(lines, next, itemIndent);
+        } else if (
+          next < lines.length &&
+          !isDocumentEnd(lines[next]) &&
+          lines[next].indent === itemIndent &&
+          isSequenceLine(lines[next].content)
+        ) {
+          const [seq, nextAfter] = parseSequence(lines, next, itemIndent, filename);
           obj[entry.key] = seq;
           i = nextAfter;
         } else {
@@ -300,41 +342,66 @@ function parseSequence(lines, startIndex, baseIndent) {
         obj[entry.key] = text;
         i = nextAfter;
       } else {
-        obj[entry.key] = parseScalar(entry.value);
+        obj[entry.key] = parseScalar(entry.value, filename, lineNumber);
       }
 
-      const [, nextAfter] = parseMappingInto(obj, lines, i, itemIndent);
+      const [, nextAfter] = parseMappingInto(obj, lines, i, itemIndent, filename);
       items.push(obj);
       i = nextAfter;
       continue;
     }
 
-    items.push(parseScalar(afterDash));
+    items.push(parseScalar(afterDash, filename, lineNumber));
   }
 
   return [items, i];
 }
 
-function parseBlock(lines, startIndex, minIndent) {
+function parseBlock(lines, startIndex, minIndent, filename) {
   const i = nextMeaningful(lines, startIndex);
-  if (i >= lines.length || lines[i].indent < minIndent) return [null, i];
-  const { indent, content } = lines[i];
-  if (isSequenceLine(content)) return parseSequence(lines, i, indent);
-  if (splitKeyValue(content)) return parseMappingInto({}, lines, i, indent);
-  return [parseScalar(content), i + 1];
+  if (i >= lines.length || isDocumentEnd(lines[i]) || lines[i].indent < minIndent) return [null, i];
+  const { indent, content, lineNumber } = lines[i];
+  if (isSequenceLine(content)) return parseSequence(lines, i, indent, filename);
+  if (splitKeyValue(content)) return parseMappingInto({}, lines, i, indent, filename);
+  return [parseScalar(content, filename, lineNumber), i + 1];
 }
 
-export function parseYaml(text) {
-  const lines = prepareLines(text);
-  const [value] = parseBlock(lines, 0, 0);
+export function parseYaml(text, { filename = '', lineOffset = 0 } = {}) {
+  const lines = prepareLines(text, filename, lineOffset);
+  let start = nextMeaningful(lines, 0);
+  if (start >= lines.length || isDocumentEnd(lines[start])) return null;
+
+  if (isDocumentStart(lines[start])) {
+    const inlineContent = lines[start].content.slice(3).trim();
+    if (inlineContent) {
+      return parseScalar(inlineContent, filename, lines[start].lineNumber);
+    }
+    start = nextMeaningful(lines, start + 1);
+    if (start >= lines.length || isDocumentEnd(lines[start])) return null;
+  }
+
+  const [value, nextIndex] = parseBlock(lines, start, 0, filename);
+  const trailing = nextMeaningful(lines, nextIndex);
+  if (trailing < lines.length && !isDocumentEnd(lines[trailing])) {
+    throw yamlError(filename, lines[trailing].lineNumber, `Unexpected trailing content "${lines[trailing].content}"`);
+  }
   return value;
 }
 
-export function parseFrontmatter(raw) {
+export function parseFrontmatter(raw, { filename = '' } = {}) {
   const normalized = normalizeNewlines(raw);
+  if (!/^---[ \t]*(?:\n|$)/.test(normalized)) {
+    return { data: {}, body: normalized.trim() };
+  }
+
   const match = normalized.match(/^---[ \t]*\n([\s\S]*?)\n---[ \t]*(?:\n|$)([\s\S]*)$/);
-  if (!match) return { data: {}, body: normalized.trim() };
-  const parsed = parseYaml(match[1]);
-  const data = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
-  return { data, body: match[2].trim() };
+  if (!match) {
+    throw yamlError(filename, 1, 'Unclosed YAML frontmatter block (missing closing "---")');
+  }
+
+  const parsed = parseYaml(match[1], { filename, lineOffset: 1 });
+  if (parsed !== null && (typeof parsed !== 'object' || Array.isArray(parsed))) {
+    throw yamlError(filename, 2, 'Frontmatter must be a YAML mapping of key-value pairs');
+  }
+  return { data: parsed ?? {}, body: match[2].trim() };
 }

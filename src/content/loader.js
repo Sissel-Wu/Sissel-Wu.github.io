@@ -37,10 +37,14 @@ function stripExtension(name) {
   return name.replace(/\.[^.]+$/, '');
 }
 
+function isExternalOrAbsolute(target) {
+  return /^(?:https?:|mailto:|data:|#|\/)/i.test(target);
+}
+
 export function resolveContentPath(fromFile, target) {
   const trimmed = String(target ?? '').trim();
   if (!trimmed) return '';
-  if (/^(?:https?:|data:|\/)/i.test(trimmed)) return trimmed;
+  if (isExternalOrAbsolute(trimmed)) return trimmed;
 
   const baseSegments = dirname(normalizeContentPath(fromFile)).split('/').filter(Boolean);
   const targetSegments = trimmed.replace(/\\/g, '/').split('/');
@@ -55,31 +59,49 @@ export function resolveContentPath(fromFile, target) {
   return baseSegments.join('/');
 }
 
-function resolveAsset(fromFile, target, assets) {
+function resolveAssetMatch(fromFile, target, assets, onAssetUse) {
   const trimmed = String(target ?? '').trim();
-  if (!trimmed) return '';
-  if (/^(?:https?:|data:)/i.test(trimmed)) return trimmed;
-  const resolved = resolveContentPath(fromFile, trimmed);
-  if (Object.hasOwn(assets, resolved)) return assets[resolved];
-  if (Object.hasOwn(assets, trimmed)) return assets[trimmed];
+  if (!trimmed) return { key: '', url: '' };
+  if (/^(?:https?:|data:)/i.test(trimmed)) return { key: '', url: trimmed };
+
+  const candidates = [resolveContentPath(fromFile, trimmed), trimmed];
   try {
-    const decoded = decodeURIComponent(resolved);
-    if (Object.hasOwn(assets, decoded)) return assets[decoded];
+    const decoded = decodeURIComponent(candidates[0]);
+    if (decoded !== candidates[0]) candidates.push(decoded);
   } catch {
     // Ignore malformed URI sequences
   }
-  return '';
+
+  for (const candidate of candidates) {
+    if (Object.hasOwn(assets, candidate)) {
+      const url = onAssetUse ? onAssetUse(candidate, assets[candidate]) : assets[candidate];
+      return { key: candidate, url };
+    }
+  }
+  return { key: '', url: '' };
 }
 
 function parseStructuredFile(filePath, raw) {
   if (/\.json$/i.test(filePath)) {
     try {
       return JSON.parse(raw);
-    } catch {
-      return null;
+    } catch (error) {
+      throw new Error(`Invalid JSON in content/${filePath}: ${error.message}`);
     }
   }
-  return parseYaml(raw);
+  return parseYaml(raw, { filename: `content/${filePath}` });
+}
+
+function assertBooleanOrUndefined(value, filePath, field) {
+  if (value !== undefined && typeof value !== 'boolean') {
+    throw new Error(`content/${filePath}: "${field}" must be a boolean (true/false), got ${JSON.stringify(value)}`);
+  }
+}
+
+function assertNumberOrUndefined(value, filePath, field) {
+  if (value !== undefined && (typeof value !== 'number' || Number.isNaN(value))) {
+    throw new Error(`content/${filePath}: "${field}" must be a number, got ${JSON.stringify(value)}`);
+  }
 }
 
 export function humanizeName(rawName) {
@@ -125,9 +147,32 @@ function compareByOrderDateName(a, b) {
   return naturalCompare(a.sortKey, b.sortKey);
 }
 
-export function loadProfile(profileFiles = {}, imageAssets = {}) {
+function createMarkdownResolvers(filePath, allAssets, onAssetUse, { strictMissingAssets = false } = {}) {
+  const resolveImage = (target) => {
+    const trimmed = String(target ?? '').trim();
+    if (!trimmed) return '';
+    if (isExternalOrAbsolute(trimmed)) return trimmed;
+    const match = resolveAssetMatch(filePath, trimmed, allAssets, onAssetUse);
+    if (!match.url && strictMissingAssets) {
+      throw new Error(`content/${filePath}: Missing image "${trimmed}"`);
+    }
+    return match.url;
+  };
+
+  const resolveLink = (target) => {
+    const trimmed = String(target ?? '').trim();
+    if (!trimmed || isExternalOrAbsolute(trimmed)) return trimmed;
+    const match = resolveAssetMatch(filePath, trimmed, allAssets, onAssetUse);
+    return match.url || trimmed;
+  };
+
+  return { resolveAsset: resolveImage, resolveLinkAsset: resolveLink };
+}
+
+export function loadProfile(profileFiles = {}, imageAssets = {}, options = {}) {
+  const { onAssetUse, allAssets = imageAssets } = options;
   const files = normalizeMap(profileFiles);
-  const images = normalizeMap(imageAssets);
+  const assets = normalizeMap(allAssets);
   const entryPath = Object.keys(files).sort(naturalCompare)[0];
   if (!entryPath) {
     return { name: '', role: '', bio: '', bioHtml: '', interests: [], links: [] };
@@ -136,11 +181,21 @@ export function loadProfile(profileFiles = {}, imageAssets = {}) {
   let data = {};
   let body = '';
   if (/\.md$/i.test(entryPath)) {
-    ({ data, body } = parseFrontmatter(files[entryPath]));
+    ({ data, body } = parseFrontmatter(files[entryPath], { filename: `content/${entryPath}` }));
   } else {
     const parsed = parseStructuredFile(entryPath, files[entryPath]);
-    data = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+    if (parsed !== null && (typeof parsed !== 'object' || Array.isArray(parsed))) {
+      throw new Error(`content/${entryPath}: Profile file must be a mapping object`);
+    }
+    data = parsed ?? {};
     body = typeof data.bio === 'string' ? data.bio : '';
+  }
+
+  if (data.links !== undefined && !Array.isArray(data.links)) {
+    throw new Error(`content/${entryPath}: "links" must be a list`);
+  }
+  if (data.interests !== undefined && !Array.isArray(data.interests)) {
+    throw new Error(`content/${entryPath}: "interests" must be a list`);
   }
 
   const bioMarkdown = body || (typeof data.bio === 'string' ? data.bio : '');
@@ -158,44 +213,59 @@ export function loadProfile(profileFiles = {}, imageAssets = {}) {
     name: String(data.name ?? '').trim(),
     role: String(data.role ?? '').trim(),
     bio: markdownToPlainParagraphs(bioMarkdown).join('\n\n'),
-    bioHtml: renderMarkdown(bioMarkdown, {
-      resolveAsset: (src) => resolveAsset(entryPath, src, images) || src,
-    }),
+    bioHtml: renderMarkdown(
+      bioMarkdown,
+      createMarkdownResolvers(entryPath, assets, onAssetUse, options),
+    ),
     interests: Array.isArray(data.interests) ? data.interests.map((item) => String(item).trim()).filter(Boolean) : [],
     links,
   };
 }
 
-export function loadArticles(articleFiles = {}, imageAssets = {}) {
+export function loadArticles(articleFiles = {}, imageAssets = {}, options = {}) {
+  const { onAssetUse, allAssets = imageAssets } = options;
   const files = normalizeMap(articleFiles);
-  const images = normalizeMap(imageAssets);
+  const assets = normalizeMap(allAssets);
   const items = [];
+  const seenIds = new Map();
 
-  for (const [filePath, raw] of Object.entries(files)) {
+  for (const filePath of Object.keys(files).sort(naturalCompare)) {
     if (!filePath.startsWith('articles/') || !/\.md$/i.test(filePath)) continue;
     const relative = filePath.slice('articles/'.length);
     if (hasHiddenSegment(relative)) continue;
     const base = basename(relative);
     if (/^readme\.md$/i.test(base)) continue;
 
-    const { data, body: rawBody } = parseFrontmatter(raw);
+    const { data, body: rawBody } = parseFrontmatter(files[filePath], { filename: `content/${filePath}` });
+    assertBooleanOrUndefined(data.draft, filePath, 'draft');
+    assertNumberOrUndefined(data.order, filePath, 'order');
     if (data.draft === true) continue;
 
-    const rawStem = /^index\.md$/i.test(base) ? basename(dirname(relative)) : stripExtension(base);
-    const datePrefix = rawStem.match(/^(\d{4}[-.]\d{2}[-.]\d{2})[-_\s]+(.+)$/);
+    const isNestedIndex = /^index\.md$/i.test(base) && dirname(relative) !== '';
+    const defaultId = isNestedIndex ? dirname(relative) : stripExtension(relative);
+    const stemForMeta = isNestedIndex ? basename(dirname(relative)) : stripExtension(base);
+    const datePrefix = stemForMeta.match(/^(\d{4}[-.]\d{2}[-.]\d{2})[-_\s]+(.+)$/);
     const inferredDate = datePrefix ? datePrefix[1] : '';
-    const inferredSlug = datePrefix ? datePrefix[2] : rawStem;
+    const inferredName = datePrefix ? datePrefix[2] : stemForMeta;
+
+    const id = String(data.id ?? defaultId).trim();
+    if (!id) {
+      throw new Error(`content/${filePath}: Article "id" must not be empty`);
+    }
+    if (seenIds.has(id)) {
+      throw new Error(`Duplicate article id "${id}" in content/${seenIds.get(id)} and content/${filePath}`);
+    }
+    seenIds.set(id, filePath);
 
     const { title: headingTitle, body: bodyWithoutHeading } = data.title
       ? { title: '', body: rawBody }
       : extractMarkdownTitle(rawBody);
 
     const markdownBody = data.title ? rawBody : bodyWithoutHeading;
-    const title = String(data.title || headingTitle || humanizeName(inferredSlug)).trim();
-    const id = String(data.id || inferredSlug).trim();
+    const title = String(data.title || headingTitle || humanizeName(inferredName)).trim();
     const date = formatDateDisplay(data.date || inferredDate);
     const category = String(data.category || 'work').trim() || 'work';
-    const order = typeof data.order === 'number' ? data.order : undefined;
+    const order = data.order;
 
     const post = {
       id,
@@ -204,9 +274,10 @@ export function loadArticles(articleFiles = {}, imageAssets = {}) {
       date,
       body: markdownToPlainParagraphs(markdownBody),
       markdown: markdownBody,
-      html: renderMarkdown(markdownBody, {
-        resolveAsset: (src) => resolveAsset(filePath, src, images),
-      }),
+      html: renderMarkdown(
+        markdownBody,
+        createMarkdownResolvers(filePath, assets, onAssetUse, options),
+      ),
       sortKey: relative,
       order,
     };
@@ -223,7 +294,8 @@ export function loadArticles(articleFiles = {}, imageAssets = {}) {
     .map(({ sortKey, order, ...post }) => post);
 }
 
-export function loadPhotoAlbums(photoMetaFiles = {}, imageAssets = {}) {
+export function loadPhotoAlbums(photoMetaFiles = {}, imageAssets = {}, options = {}) {
+  const { onAssetUse, strictMissingAssets = false } = options;
   const metaMap = normalizeMap(photoMetaFiles);
   const images = normalizeMap(imageAssets);
 
@@ -233,14 +305,17 @@ export function loadPhotoAlbums(photoMetaFiles = {}, imageAssets = {}) {
     return folders.get(folder);
   };
 
-  for (const [filePath, raw] of Object.entries(metaMap)) {
+  for (const filePath of Object.keys(metaMap).sort(naturalCompare)) {
     const match = filePath.match(/^photos\/([^/]+)\/(?:album|index)\.(?:ya?ml|json)$/i);
     if (!match || hasHiddenSegment(match[1])) continue;
     const entry = ensureFolder(match[1]);
-    if (!entry.metaPath || naturalCompare(filePath, entry.metaPath) < 0) {
-      const parsed = parseStructuredFile(filePath, raw);
+    if (!entry.metaPath) {
+      const parsed = parseStructuredFile(filePath, metaMap[filePath]);
+      if (parsed !== null && (typeof parsed !== 'object' || Array.isArray(parsed))) {
+        throw new Error(`content/${filePath}: Album metadata must be a YAML/JSON object`);
+      }
       entry.metaPath = filePath;
-      entry.meta = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+      entry.meta = parsed ?? {};
     }
   }
 
@@ -253,27 +328,44 @@ export function loadPhotoAlbums(photoMetaFiles = {}, imageAssets = {}) {
   const albums = [];
   for (const [folder, entry] of folders.entries()) {
     const { meta, files } = entry;
+    const metaLabel = entry.metaPath || `photos/${folder}/album.yaml`;
+    assertBooleanOrUndefined(meta.draft, metaLabel, 'draft');
+    assertBooleanOrUndefined(meta.includeUnlisted, metaLabel, 'includeUnlisted');
+    assertNumberOrUndefined(meta.order, metaLabel, 'order');
+    if (meta.photos !== undefined && !Array.isArray(meta.photos)) {
+      throw new Error(`content/${metaLabel}: "photos" must be a list`);
+    }
     if (meta.draft === true) continue;
 
     files.sort((a, b) => naturalCompare(a.fileName, b.fileName));
-    const metaBase = entry.metaPath || `photos/${folder}/album.yaml`;
-    const usedPaths = new Set();
+    const handledPaths = new Set();
     const photos = [];
 
     const hasExplicitPhotos = Array.isArray(meta.photos);
     if (hasExplicitPhotos) {
       for (const item of meta.photos) {
         const entryObj = typeof item === 'string' ? { file: item } : item;
-        if (!entryObj || typeof entryObj !== 'object' || entryObj.draft === true) continue;
-        const target = entryObj.file ?? entryObj.src ?? '';
-        const src = resolveAsset(metaBase, target, images);
-        if (!src) continue;
-        const resolvedPath = resolveContentPath(metaBase, target);
-        usedPaths.add(resolvedPath);
+        if (!entryObj || typeof entryObj !== 'object') continue;
+        assertBooleanOrUndefined(entryObj.draft, metaLabel, 'photos[].draft');
 
+        const target = entryObj.file ?? entryObj.src ?? '';
+        // Resolve the canonical key first so drafted or URL-encoded photos are still deduplicated.
+        const keyProbe = resolveAssetMatch(metaLabel, target, images);
+        if (keyProbe.key) handledPaths.add(keyProbe.key);
+
+        if (entryObj.draft === true) continue;
+
+        const match = resolveAssetMatch(metaLabel, target, images, onAssetUse);
+        if (!match.url) {
+          if (strictMissingAssets && target) {
+            throw new Error(`content/${metaLabel}: Missing photo "${target}"`);
+          }
+          continue;
+        }
+        const resolvedName = basename(match.key || resolveContentPath(metaLabel, target) || String(target));
         const photo = {
-          src,
-          title: String(entryObj.title || humanizeName(basename(resolvedPath || target))).trim(),
+          src: match.url,
+          title: String(entryObj.title || humanizeName(resolvedName)).trim(),
         };
         if (entryObj.location != null && String(entryObj.location).trim()) {
           photo.location = String(entryObj.location).trim();
@@ -285,14 +377,15 @@ export function loadPhotoAlbums(photoMetaFiles = {}, imageAssets = {}) {
       }
     }
 
-    const coverPath = meta.cover ? resolveContentPath(metaBase, meta.cover) : '';
+    const coverProbe = meta.cover ? resolveAssetMatch(metaLabel, meta.cover, images) : { key: '', url: '' };
     const includeUnlisted = meta.includeUnlisted !== false;
     if (!hasExplicitPhotos || includeUnlisted) {
       for (const file of files) {
-        if (usedPaths.has(file.filePath)) continue;
-        if (hasExplicitPhotos && coverPath && file.filePath === coverPath) continue;
+        if (handledPaths.has(file.filePath)) continue;
+        if (hasExplicitPhotos && coverProbe.key && file.filePath === coverProbe.key) continue;
+        const src = onAssetUse ? onAssetUse(file.filePath, file.url) : file.url;
         photos.push({
-          src: file.url,
+          src,
           title: humanizeName(file.fileName),
         });
       }
@@ -300,14 +393,23 @@ export function loadPhotoAlbums(photoMetaFiles = {}, imageAssets = {}) {
 
     if (photos.length === 0) continue;
 
-    const cover = (meta.cover ? resolveAsset(metaBase, meta.cover, images) : '') || photos[0].src;
+    let cover = '';
+    if (meta.cover) {
+      const coverMatch = resolveAssetMatch(metaLabel, meta.cover, images, onAssetUse);
+      if (!coverMatch.url && strictMissingAssets) {
+        throw new Error(`content/${metaLabel}: Missing cover image "${meta.cover}"`);
+      }
+      cover = coverMatch.url;
+    }
+    if (!cover) cover = photos[0].src;
+
     albums.push({
       id: folder,
       title: String(meta.title || humanizeName(folder)).trim(),
       cover,
       photos,
       date: meta.date ?? '',
-      order: typeof meta.order === 'number' ? meta.order : undefined,
+      order: meta.order,
       sortKey: folder,
     });
   }
@@ -317,7 +419,8 @@ export function loadPhotoAlbums(photoMetaFiles = {}, imageAssets = {}) {
     .map(({ sortKey, order, date, ...album }) => album);
 }
 
-export function loadVideos(videoMetaFiles = {}, imageAssets = {}) {
+export function loadVideos(videoMetaFiles = {}, imageAssets = {}, options = {}) {
+  const { onAssetUse, strictMissingAssets = false } = options;
   const metaMap = normalizeMap(videoMetaFiles);
   const images = normalizeMap(imageAssets);
   const videos = [];
@@ -325,18 +428,32 @@ export function loadVideos(videoMetaFiles = {}, imageAssets = {}) {
   for (const filePath of Object.keys(metaMap).sort(naturalCompare)) {
     if (!filePath.startsWith('videos/') || hasHiddenSegment(filePath)) continue;
     const parsed = parseStructuredFile(filePath, metaMap[filePath]);
-    const list = Array.isArray(parsed) ? parsed : (Array.isArray(parsed?.videos) ? parsed.videos : []);
+    if (parsed === null) continue;
+    let list;
+    if (Array.isArray(parsed)) {
+      list = parsed;
+    } else if (typeof parsed === 'object' && Array.isArray(parsed.videos)) {
+      list = parsed.videos;
+    } else {
+      throw new Error(`content/${filePath}: Videos manifest must be a list or an object with a "videos" list`);
+    }
+
     for (const item of list) {
-      if (!item || typeof item !== 'object' || item.draft === true) continue;
+      if (!item || typeof item !== 'object') continue;
+      assertBooleanOrUndefined(item.draft, filePath, 'draft');
+      if (item.draft === true) continue;
       const title = String(item.title ?? '').trim();
       if (!title) continue;
       const video = { title };
       if (item.image != null && String(item.image).trim()) {
-        const resolved = resolveAsset(filePath, item.image, images);
-        if (resolved) video.image = resolved;
+        const match = resolveAssetMatch(filePath, item.image, images, onAssetUse);
+        if (!match.url && strictMissingAssets) {
+          throw new Error(`content/${filePath}: Missing video image "${item.image}"`);
+        }
+        if (match.url) video.image = match.url;
       }
       if (item.url != null && String(item.url).trim()) {
-        const safeUrl = sanitizeUrl(item.url);
+        const safeUrl = sanitizeUrl(item.url, { allowDataImage: false, allowMailto: false });
         if (safeUrl) video.url = safeUrl;
       }
       videos.push(video);
@@ -346,7 +463,8 @@ export function loadVideos(videoMetaFiles = {}, imageAssets = {}) {
   return videos;
 }
 
-export function loadMusicTracks(musicMetaFiles = {}, audioAssets = {}) {
+export function loadMusicTracks(musicMetaFiles = {}, audioAssets = {}, options = {}) {
+  const { onAssetUse, strictMissingAssets = false } = options;
   const metaMap = normalizeMap(musicMetaFiles);
   const audio = normalizeMap(audioAssets);
   const tracks = [];
@@ -357,13 +475,30 @@ export function loadMusicTracks(musicMetaFiles = {}, audioAssets = {}) {
   if (metaPaths.length > 0) {
     for (const filePath of metaPaths) {
       const parsed = parseStructuredFile(filePath, metaMap[filePath]);
-      const list = Array.isArray(parsed) ? parsed : (Array.isArray(parsed?.tracks) ? parsed.tracks : []);
+      if (parsed === null) continue;
+      let list;
+      if (Array.isArray(parsed)) {
+        list = parsed;
+      } else if (typeof parsed === 'object' && Array.isArray(parsed.tracks)) {
+        list = parsed.tracks;
+      } else {
+        throw new Error(`content/${filePath}: Music manifest must be a list or an object with a "tracks" list`);
+      }
+
       for (const item of list) {
-        if (!item || typeof item !== 'object' || item.draft === true) continue;
-        const src = resolveAsset(filePath, item.file ?? item.src ?? '', audio);
-        if (!src) continue;
-        const title = String(item.title || humanizeName(basename(String(item.file ?? item.src ?? '')))).trim();
-        const track = { title, src };
+        if (!item || typeof item !== 'object') continue;
+        assertBooleanOrUndefined(item.draft, filePath, 'draft');
+        if (item.draft === true) continue;
+        const target = item.file ?? item.src ?? '';
+        const match = resolveAssetMatch(filePath, target, audio, onAssetUse);
+        if (!match.url) {
+          if (strictMissingAssets && target) {
+            throw new Error(`content/${filePath}: Missing audio file "${target}"`);
+          }
+          continue;
+        }
+        const title = String(item.title || humanizeName(basename(match.key || String(target)))).trim();
+        const track = { title, src: match.url };
         if (item.mood != null && String(item.mood).trim()) track.mood = String(item.mood).trim();
         if (item.duration != null && String(item.duration).trim()) track.duration = String(item.duration).trim();
         tracks.push(track);
@@ -375,7 +510,8 @@ export function loadMusicTracks(musicMetaFiles = {}, audioAssets = {}) {
   for (const filePath of Object.keys(audio).sort(naturalCompare)) {
     const match = filePath.match(/^music\/([^/]+)$/);
     if (!match || hasHiddenSegment(match[1])) continue;
-    tracks.push({ title: humanizeName(match[1]), src: audio[filePath] });
+    const src = onAssetUse ? onAssetUse(filePath, audio[filePath]) : audio[filePath];
+    tracks.push({ title: humanizeName(match[1]), src });
   }
   return tracks;
 }
@@ -388,12 +524,16 @@ export function loadContent({
   musicMetaFiles = {},
   imageAssets = {},
   audioAssets = {},
+  onAssetUse,
+  strictMissingAssets = false,
 } = {}) {
+  const allAssets = { ...normalizeMap(imageAssets), ...normalizeMap(audioAssets) };
+  const sharedOptions = { onAssetUse, strictMissingAssets, allAssets };
   return {
-    profile: loadProfile(profileFiles, imageAssets),
-    posts: loadArticles(articleFiles, imageAssets),
-    photoAlbums: loadPhotoAlbums(photoMetaFiles, imageAssets),
-    videos: loadVideos(videoMetaFiles, imageAssets),
-    musicTracks: loadMusicTracks(musicMetaFiles, audioAssets),
+    profile: loadProfile(profileFiles, imageAssets, sharedOptions),
+    posts: loadArticles(articleFiles, imageAssets, sharedOptions),
+    photoAlbums: loadPhotoAlbums(photoMetaFiles, imageAssets, sharedOptions),
+    videos: loadVideos(videoMetaFiles, imageAssets, sharedOptions),
+    musicTracks: loadMusicTracks(musicMetaFiles, audioAssets, sharedOptions),
   };
 }
