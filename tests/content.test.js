@@ -60,6 +60,18 @@ test('YAML and frontmatter parsers throw clear errors on malformed input instead
   assert.throws(() => parseYaml('\tkey: value', { filename: 'tabs.yaml' }), /tabs\.yaml:1/);
   assert.throws(() => parseFrontmatter('---\ntitle: Broken\nno closing fence', { filename: 'broken.md' }), /broken\.md:1/);
   assert.throws(
+    () => parseFrontmatter('---\ntitle: Secret\ndraft: true\ndraft: false\n---\nBody', { filename: 'dup.md' }),
+    /dup\.md:4: Duplicate key "draft"/,
+  );
+  assert.throws(
+    () => parseYaml('- draft: true\n  draft: false\n', { filename: 'seq-dup.yaml' }),
+    /seq-dup\.yaml:2: Duplicate key "draft"/,
+  );
+  assert.throws(
+    () => parseFrontmatter('---\ntitle: Secret\n...\ndraft: true\n---\nBody', { filename: 'after-end.md' }),
+    /after-end\.md:4: Unexpected content after document end/,
+  );
+  assert.throws(
     () => loadContent({
       articleFiles: { '../content/articles/bad-draft.md': '---\ntitle: X\ndraft: maybe\n---\nHi' },
     }),

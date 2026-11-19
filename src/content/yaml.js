@@ -247,6 +247,9 @@ function parseMappingInto(obj, lines, startIndex, baseIndent, filename) {
     if (!entry) {
       throw yamlError(filename, lineNumber, `Expected "key: value" entry, got "${content}"`);
     }
+    if (Object.hasOwn(obj, entry.key)) {
+      throw yamlError(filename, lineNumber, `Duplicate key "${entry.key}"`);
+    }
     i += 1;
 
     if (entry.value === '') {
@@ -366,25 +369,44 @@ function parseBlock(lines, startIndex, minIndent, filename) {
   return [parseScalar(content, filename, lineNumber), i + 1];
 }
 
+function assertNoTrailingContent(lines, startIndex, filename) {
+  let index = nextMeaningful(lines, startIndex);
+  if (index >= lines.length) return;
+  if (isDocumentEnd(lines[index])) {
+    index = nextMeaningful(lines, index + 1);
+    if (index < lines.length) {
+      throw yamlError(filename, lines[index].lineNumber, `Unexpected content after document end "...": "${lines[index].content}"`);
+    }
+    return;
+  }
+  throw yamlError(filename, lines[index].lineNumber, `Unexpected trailing content "${lines[index].content}"`);
+}
+
 export function parseYaml(text, { filename = '', lineOffset = 0 } = {}) {
   const lines = prepareLines(text, filename, lineOffset);
   let start = nextMeaningful(lines, 0);
-  if (start >= lines.length || isDocumentEnd(lines[start])) return null;
+  if (start >= lines.length) return null;
+  if (isDocumentEnd(lines[start])) {
+    assertNoTrailingContent(lines, start, filename);
+    return null;
+  }
 
   if (isDocumentStart(lines[start])) {
     const inlineContent = lines[start].content.slice(3).trim();
     if (inlineContent) {
+      assertNoTrailingContent(lines, start + 1, filename);
       return parseScalar(inlineContent, filename, lines[start].lineNumber);
     }
     start = nextMeaningful(lines, start + 1);
-    if (start >= lines.length || isDocumentEnd(lines[start])) return null;
+    if (start >= lines.length) return null;
+    if (isDocumentEnd(lines[start])) {
+      assertNoTrailingContent(lines, start, filename);
+      return null;
+    }
   }
 
   const [value, nextIndex] = parseBlock(lines, start, 0, filename);
-  const trailing = nextMeaningful(lines, nextIndex);
-  if (trailing < lines.length && !isDocumentEnd(lines[trailing])) {
-    throw yamlError(filename, lines[trailing].lineNumber, `Unexpected trailing content "${lines[trailing].content}"`);
-  }
+  assertNoTrailingContent(lines, nextIndex, filename);
   return value;
 }
 
