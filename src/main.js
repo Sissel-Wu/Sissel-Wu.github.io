@@ -1,6 +1,7 @@
 import './style.css';
 import { createRoom } from './scene.js';
 import { profile, posts, videos, photoAlbums } from './data.js';
+import { escapeHTML } from './content/markdown.js';
 
 const dialog=document.querySelector('#content-dialog');
 const content=document.querySelector('#panel-content');
@@ -20,7 +21,6 @@ function playWithDog(){
   const messages={pet:'导弹眯起眼，摇了摇尾巴。',paw:'导弹抬起一只爪子。',spin:'导弹转了一圈。'};
   document.querySelector('#dog-status').replaceChildren(reducedMotion?'导弹向你打招呼。':messages[action]);
 }
-const escapeHTML=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function setPanelTitle(title,backTo=''){
   panelTitle.textContent=title;
   backButton.dataset.back=backTo;
@@ -31,7 +31,7 @@ function setPanelTitle(title,backTo=''){
 
 const postList=category=>posts
   .filter(post=>post.category===category)
-  .map(post=>`<button class="list-row" data-post="${post.id}">${escapeHTML(post.title)}<span aria-hidden="true">→</span></button>`)
+  .map(post=>`<button class="list-row" data-post="${escapeHTML(post.id)}">${escapeHTML(post.title)}<span aria-hidden="true">→</span></button>`)
   .join('');
 
 function renderPanel(type){
@@ -44,20 +44,26 @@ function renderPanel(type){
   }
   if(type==='videos')content.innerHTML=videos.map(video=>{
     const url=video.url??`https://search.bilibili.com/all?keyword=${encodeURIComponent(video.title)}`;
+    const thumbnail=video.image
+      ? `<span class="video-thumbnail"><img src="${escapeHTML(video.image)}" alt="" loading="lazy"></span>`
+      : '';
     return `
       <a class="list-row video-row" href="${escapeHTML(url)}" target="_blank" rel="noreferrer">
-        <span class="video-thumbnail"><img src="${video.image}" alt="" loading="lazy"></span>
+        ${thumbnail}
         ${escapeHTML(video.title)}
       </a>`;
   }).join('');
-  if(type==='work')content.innerHTML=`
-    <p class="bio">${escapeHTML(profile.bio)}</p>
-    <div class="contact-links">
-      <a class="contact-link" href="https://github.com/Sissel-Wu" target="_blank" rel="noreferrer">GitHub ↗</a>
-      <a class="contact-link" href="https://www.researchgate.net/" target="_blank" rel="noreferrer">ResearchGate ↗</a>
-    </div>
+  if(type==='work'){
+    const bio=profile.bioHtml||`<p>${escapeHTML(profile.bio)}</p>`;
+    const links=profile.links?.length
+      ? `<div class="contact-links">${profile.links.map(link=>`<a class="contact-link" href="${escapeHTML(link.url)}" target="_blank" rel="noreferrer">${escapeHTML(link.label)} ↗</a>`).join('')}</div>`
+      : '';
+    content.innerHTML=`
+    <div class="bio">${bio}</div>
+    ${links}
     <h3 class="section-title">文章</h3>
     ${postList('work')}`;
+  }
   if(type==='photos')content.innerHTML=`
     <div class="photo-grid">${photoAlbums.map((album,index)=>`
       <button class="photo-card" type="button" data-album="${index}">
@@ -87,7 +93,8 @@ document.querySelector('#index-button').addEventListener('click',()=>openPanel('
 function showArticle(id){
   const post=posts.find(p=>p.id===id);if(!post)return;
   setPanelTitle(post.title,currentPanel);
-  content.innerHTML=`<article class="article">${post.body.map(paragraph=>`<p>${escapeHTML(paragraph)}</p>`).join('')}</article>`;
+  const articleHtml=post.html||post.body.map(paragraph=>`<p>${escapeHTML(paragraph)}</p>`).join('');
+  content.innerHTML=`<article class="article">${articleHtml}</article>`;
   backButton.focus({preventScroll:true});
 }
 function showAlbum(index){

@@ -2,4 +2,4 @@ rainy-afternoon.wav and after-hours.wav
 Original synthesized demonstration pieces created for this project.
 No third-party recordings or artist performances are used.
 Each file is 32 seconds, mono PCM, 22050 Hz.
-Replace these files and the musicTracks entries in src/data.js with your own music.
+Replace these files and the entries in content/music/tracks.yaml with your own music.

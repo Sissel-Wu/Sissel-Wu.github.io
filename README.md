@@ -37,9 +37,17 @@ npm run preview
 
 ## 修改内容
 
-| 文件 | 用途 |
+所有日常编辑的文字、照片、视频与音乐都集中在 `content/` 目录，详细说明见 [`content/README.md`](content/README.md)。
+
+| 文件 / 目录 | 用途 |
 | --- | --- |
-| `src/data.js` | 简介、文章、视频与相册的示例数据 |
+| `content/profile.md` | 个人简介、研究兴趣与外链（Markdown + YAML frontmatter） |
+| `content/articles/` | 文章目录：每个 `.md` 文件（或含 `index.md` 与配图的子文件夹）即一篇文章 |
+| `content/photos/` | 相册目录：每个子文件夹即一个相册，可选 `album.yaml` 自定义标题与顺序 |
+| `content/videos/videos.yaml` | 视频列表、封面与链接 |
+| `content/music/` | 音乐试听文件与 `tracks.yaml` 曲目配置 |
+| `src/data.js` | 通过 Vite `import.meta.glob` 汇总 `content/` 内容 |
+| `src/content/` | YAML frontmatter 解析、Markdown 渲染与内容加载逻辑 |
 | `src/scene.js` | 房间、家具、材质、灯光、拾取与相机 |
 | `src/navigation.js` | 相机角度范围、90° 视角切换、鼠标移动判定与平滑函数 |
 | `src/dog.js` | 博美犬模型、朝向与互动动作 |
@@ -49,12 +57,10 @@ npm run preview
 | `src/screens.js` | 像素小电视标识、低清封面、位图字体与低频命令行滚动 |
 | `src/main.js` | 内容面板、文章阅读、视频外链、照片浏览 |
 | `src/style.css` | 视觉样式与手机布局 |
-| `public/images/` | 已下载到本地的示例摄影素材 |
-| `public/audio/` | 本地音乐试听文件，曲目配置在 `src/data.js` 的 `musicTracks` |
 
-简介和文章使用示例内容。给 `src/data.js` 的视频条目设置 `url` 即可直达哔哩哔哩或 YouTube 的视频页面。未设置时按标题跳转到哔哩哔哩搜索。
+简介和文章使用示例内容。给 `content/videos/videos.yaml` 的视频条目设置 `url` 即可直达哔哩哔哩或 YouTube 的视频页面。未设置时按标题跳转到哔哩哔哩搜索。
 
-场景模型、电视画面、窗景与装饰画均由代码生成，不依赖外部 3D 模型。字体来自 Google Fonts（DM Sans / Noto Serif SC），不可用时自动回退到系统字体。摄影素材来自 Unsplash，来源见 `public/images/CREDITS.md`。
+场景模型、电视画面、窗景与装饰画均由代码生成，不依赖外部 3D 模型。字体来自 Google Fonts（DM Sans / Noto Serif SC），不可用时自动回退到系统字体。摄影素材来自 Unsplash，来源见 `content/photos/along-the-way/CREDITS.md`。
 
 圣诞树、窗台仙人掌、垂藤和小花采用不同轮廓与盆色，几何体按材质合并；玩具球使用阶梯球形与三色条纹，合并为三个网格。电视显示像素 bilibili 小电视标识与三张抽象视频封面；电脑展示模拟命令行，每停留 5–7 秒后用 1 秒上移一行，支持减少动态效果。左侧改为横向山水像素画，圣诞树带星顶和彩色挂饰；蓝绿色窗帘和深色钟框与墙面拉开对比。窗户使用真实墙洞、独立窗框和留白窗景。所有材质贴图都在房间销毁时释放。
 

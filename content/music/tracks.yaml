@@ -1,0 +1,10 @@
+# 音乐列表（音频文件可直接放在本目录下）
+- title: 雨日下午
+  mood: 轻柔琴音 · 放空片刻
+  duration: "0:32"
+  file: rainy-afternoon.wav
+
+- title: 夜色慢下来
+  mood: 温暖和弦 · 留一盏灯
+  duration: "0:32"
+  file: after-hours.wav

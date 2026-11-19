@@ -1,0 +1,20 @@
+# 相册配置（可选：即使不写此文件，文件夹内的图片也会按文件名自动收录）
+title: 沿途所见
+cover: coast.jpg
+photos:
+  - file: coast.jpg
+    title: 湖边没有截止日期
+    location: LAKESIDE
+    year: 2026
+  - file: mountain.jpg
+    title: 山在远处，心也在
+    location: IN THE MOUNTAINS
+    year: 2026
+  - file: city.jpg
+    title: 夜色慢慢亮起来
+    location: CITY WALK
+    year: 2025
+  - file: forest.jpg
+    title: 绿色的呼吸
+    location: FOREST LIGHT
+    year: 2025
