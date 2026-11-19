@@ -58,7 +58,7 @@ dialog[open] { animation: slide-in .28s ease-out; }
 }
 .close-button:hover, .back-button:hover { background: #eeefe8; }
 
-.list-row, .publication summary {
+.list-row {
   display: flex;
   width: 100%;
   min-height: 54px;
@@ -72,57 +72,20 @@ dialog[open] { animation: slide-in .28s ease-out; }
   line-height: 1.55;
   text-align: left;
 }
-.list-row > [aria-hidden], .publication-toggle { color: #606b5d; }
-.list-row:hover, .publication summary:hover { background: #f1f1eb; }
+.list-row > [aria-hidden] { color: #606b5d; }
+.tba-row, .tba-row > [aria-hidden] { color: #c2c6bd; }
+.list-row:hover { background: #f1f1eb; }
 
 .video-row { justify-content: flex-start; }
 .video-thumbnail {
-  position: relative;
   display: block;
-  flex: 0 0 clamp(88px, 20%, 120px);
+  flex: 0 0 clamp(114.4px, 26%, 156px);
   aspect-ratio: 16 / 10;
   overflow: hidden;
   border-radius: 4px;
   background: #e6e7dc;
 }
 .video-thumbnail img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.video-thumbnail span {
-  position: absolute;
-  inset: auto auto 6px 6px;
-  padding: 2px 6px;
-  border-radius: 3px;
-  background: #17221bd9;
-  color: white;
-  font-size: 10px;
-}
-
-.demo-reel {
-  overflow: hidden;
-  aspect-ratio: 16 / 9;
-  border-radius: 4px;
-  background: #1c281d;
-}
-.demo-reel img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  animation: reel-pan 12s linear both;
-  animation-play-state: paused;
-}
-.demo-reel.playing img { animation-play-state: running; }
-@keyframes reel-pan {
-  from { transform: scale(1); }
-  to { transform: scale(1.2) translateX(-3%); }
-}
-.reel-controls {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  margin-top: 12px;
-}
-.reel-controls progress { flex: 1; min-width: 0; accent-color: var(--green); }
-#reel-time { font-variant-numeric: tabular-nums; }
 
 .photo-grid {
   display: grid;
@@ -140,34 +103,21 @@ dialog[open] { animation: slide-in .28s ease-out; }
 .photo-card:hover span { text-decoration: underline; }
 .photo-view img { display: block; width: 100%; max-height: 62vh; object-fit: contain; background: #eeefe8; }
 .photo-controls { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; }
-.photo-controls button, .reel-controls button {
+.photo-controls button {
   min-height: 40px;
   padding: 8px 12px;
   border-radius: 4px;
   background: #eeefe8;
   font-size: 13px;
 }
-.photo-controls button:hover, .reel-controls button:hover { background: #e6e9df; }
-.media-note, .photo-controls span, #reel-time, #music-status { color: #606b5d; font-size: 12px; }
-.media-note { margin: 14px 0 0; }
-
-#music-audio { display: block; width: 100%; }
-#music-status { margin: 8px 0 0; }
-#music-status:empty { margin: 0; }
-.music-track-list { margin-top: 18px; }
-.music-track[aria-pressed="true"] { font-weight: 600; }
-.music-track[aria-pressed="false"] .track-indicator { visibility: hidden; }
+.photo-controls button:hover { background: #e6e9df; }
+.photo-controls span { color: #606b5d; font-size: 12px; }
 
 .section-title { margin: 28px 0 8px; font-size: 14px; font-weight: 600; }
-.contact-link { display: inline-block; font-size: 14px; text-decoration: underline; text-underline-offset: 4px; }
+.contact-links { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+.contact-link { font-size: 14px; text-decoration: underline; text-underline-offset: 4px; }
 .article, .bio { color: #414b40; font-size: 15px; line-height: 1.95; }
 .article p, .bio { margin: 0 0 16px; }
-.publication summary { cursor: pointer; list-style: none; }
-.publication summary::-webkit-details-marker { display: none; }
-.publication small { display: block; margin-top: 4px; color: #606b5d; font-size: 12px; }
-.publication-toggle::before { content: '+'; }
-.publication[open] .publication-toggle::before { content: '−'; }
-.publication p { color: #414b40; font-size: 14px; line-height: 1.9; margin: 0 0 16px; }
 
-@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}.demo-reel img{animation:none!important}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}

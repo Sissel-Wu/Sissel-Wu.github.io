@@ -171,8 +171,6 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
   for(const x of [-.095,.06]){const knob=column(.025,.025,.016,x,.06,.035,black,controller,16);knob.rotation.x=.1;}
   box(.06,.015,.02,-.1,.06,-.04,dark,.004,controller);box(.02,.015,.06,-.1,.06,-.04,dark,.004,controller);
   for(let i=0;i<4;i++)cube(.009,.1+Math.sin(i*Math.PI/2)*.025,.06,-.025+Math.cos(i*Math.PI/2)*.025,clay,controller);
-  controller.traverse(m=>{if(m.isMesh){m.userData.content='gaming';clickables.push(m);}});
-  interact(consoleGroup,'gaming',[.7,1.78,-3.46],'游戏','PLAY');
 
   // Block-built sage sofa, square cushions and a pixel-weave throw.
   const sofa=new THREE.Group();sofa.position.set(-4.3,0,-.6);sofa.scale.setScalar(.85);
@@ -229,7 +227,6 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
   const recordPlayer=createRecordPlayer({wood,darkWood,black,
     metal:mat('recordMetal','#8b937f'),label:clay,cloth:linen});
   recordPlayer.position.set(3.05,0,room.front+.55);scene.add(recordPlayer);
-  interact(recordPlayer,'music',[recordPlayer.position.x,2.13,recordPlayer.position.z+.1],'音乐','MUSIC');
 
   // Gallery print and a full-height Christmas tree.
   const poster=texture((ctx,w,h)=>{
@@ -301,7 +298,7 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
     support([side*.32,.85,.3],[side*.44,.85,.3],.026,.026,wood,chair);
   }
 
-  // Right-wall bookcase, facing into the room. The entire cabinet is clickable.
+  // Right-wall bookcase, facing into the room.
   const bookcase=new THREE.Group();bookcase.position.set(room.right-.43,0,-1.35);bookcase.rotation.y=-Math.PI/2;scene.add(bookcase);
   const shelfBack=mat('shelfBack','#8c7958');
   box(2.66,3.04,.055,0,1.74,-.235,shelfBack,.01,bookcase);
@@ -330,7 +327,7 @@ export function createRoom(canvas, { onOpen, onReady, onViewChange }) {
   },384,104);
   box(.83,.4,.16,.25,1.725,.015,cream,.008,bookcase);
   picture(bookplate,.79,.215,.25,1.81,.105,false,bookcase);
-  interact(bookcase,'culture',[room.right-.76,3.57,-1.35],'故事','CULTURE');
+
   // Floating shelf and small objects connecting both corners.
   box(1.55,.08,.28,1.1,3.44,-4.22,wood,.01);
   const clockShelfColors=bookColors.slice();
