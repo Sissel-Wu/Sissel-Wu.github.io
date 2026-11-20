@@ -7,8 +7,8 @@ interests:
 links:
   - label: GitHub
     url: https://github.com/Sissel-Wu
-  - label: ResearchGate
-    url: https://www.researchgate.net/
+  - label: Research
+    url: https://www.researchgate.net/profile/Jiarong-Wu/research
 ---
 
 Hi，我是 Sissel，这里是我的赛博小窝。
