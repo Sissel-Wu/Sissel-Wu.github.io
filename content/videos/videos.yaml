@@ -1,0 +1,8 @@
+# 视频列表
+# - title: 视频标题（必填）
+# - image: 封面图，可放本目录下写文件名、写相对路径，或填 https:// 图片地址
+# - url: 视频地址（如 B 站 / YouTube）；留空则按标题搜索哔哩哔哩
+
+- title: 【GBC/剧情MAD】再见了，青春
+  image: ./SorryYouthCover.png
+  url: https://www.bilibili.com/video/BV1a5ViejEh5

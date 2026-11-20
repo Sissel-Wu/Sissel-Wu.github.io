@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#e9e3d8" />
+    <meta name="description" content="Sissel 的数字工作室。坐一会儿，看看我的研究、影像、游戏与日常。" />
+    <title>Sissel — A place to be.</title>
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="room" aria-label="可交互的 3D 工作室。点击房间里的物品，或通过右上角的目录浏览内容。"></canvas>
+      <div class="vignette" aria-hidden="true"></div>
+      <header class="header">
+        <a class="brand" href="./" aria-label="Sissel 首页">
+          <img class="brand-icon" src="./favicon.svg" width="43" height="43" alt="" />
+          <span>SISSEL<span class="brand-sub">A PERSONAL SPACE</span></span>
+        </a>
+        <nav class="header-nav" aria-label="主页导航"><button id="index-button" class="text-button">探索目录 <span>↗</span></button><a href="https://github.com/Sissel-Wu" target="_blank" rel="noreferrer" class="github-link" aria-label="访问 Sissel 的 GitHub">GitHub ↗</a></nav>
+      </header>
+      <section class="intro" aria-label="欢迎"><div class="eyebrow"><span class="small-line"></span> WELCOME TO MY LITTLE CORNER</div><h1>生活多样，<br>保持好奇<span>。</span></h1></section>
+      <div id="hotspots" aria-label="房间里的物品"></div>
+      <div id="loading" role="status"><span class="loading-dot"></span> 正在为你打开工作室…</div>
+      <div id="fallback" hidden><h2>换一种方式，逛逛我的工作室。</h2><p>当前设备无法呈现 3D 场景，仍可通过右上角的「探索目录」浏览内容。</p></div>
+      <footer class="footer">
+        <div class="navigation"><div class="view-switch" role="group" aria-label="切换视角"><button data-view="living" class="active" aria-pressed="true"><span>◧</span> 客厅</button><button data-view="desk" aria-pressed="false"><span>▱</span> 书桌</button></div><span class="move-hint"><span>↔</span> 移动鼠标环顾 · 点击物品探索</span></div>
+      </footer>
+      <dialog id="content-dialog" aria-labelledby="panel-title">
+        <header class="panel-header">
+          <div>
+            <button id="panel-back" class="back-button" type="button" hidden>← 返回</button>
+            <h2 id="panel-title" tabindex="-1"></h2>
+          </div>
+          <button id="close-dialog" class="close-button" type="button" aria-label="关闭面板">×</button>
+        </header>
+        <div id="panel-content"></div>
+      </dialog>
+      <div id="toast" role="status"></div>
+      <span id="dog-status" class="sr-only" role="status"></span>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
