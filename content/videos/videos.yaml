@@ -3,12 +3,6 @@
 # - image: 封面图，可放本目录下写文件名、写相对路径，或填 https:// 图片地址
 # - url: 视频地址（如 B 站 / YouTube）；留空则按标题搜索哔哩哔哩
 
-- title: 日常之间
-  image: ../photos/along-the-way/coast.jpg
-  # url: https://www.bilibili.com/video/BVxxxxxxxxxx
-
-- title: 去山里，待一会儿
-  image: ../photos/along-the-way/mountain.jpg
-
-- title: 一座城市的慢镜头
-  image: ../photos/along-the-way/city.jpg
+- title: 【GBC/剧情MAD】再见了，青春
+  image: ./SorryYouthCover.png
+  url: https://www.bilibili.com/video/BV1a5ViejEh5
