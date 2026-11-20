@@ -50,6 +50,11 @@ content/photos/kyoto-2026/
 
 - **零配置**：不写 `album.yaml` 时，文件夹名会作为相册标题，图片按文件名自然排序，第一张自动做封面。
 - **自定义标题与顺序**：在相册文件夹中放一个 `album.yaml`（支持 `title`、`cover`、`order`、`date`、`draft` 与 `photos` 列表）。放入文件夹但未写进 `photos` 的新图片会自动追加在末尾；若想只显示列表里的照片，可加 `includeUnlisted: false`。
+- **批量压缩导入原图**：可用内置脚本一键压缩目录中的相机原图（默认限制长边 1600px、转为 `.webp` 并剔除 EXIF/GPS 元数据）：
+  ```sh
+  npm run import-photos -- /你的相机照片目录 kyoto-2026 --title "京都散步"
+  ```
+  支持 `--format jpg`、`--max-size 1920`、`--quality 85`、`--overwrite`、`--dry-run` 等参数，可用 `npm run import-photos -- --help` 查看全部说明。
 
 ## 4. 修改视频与音乐
 
